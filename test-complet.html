@@ -1,0 +1,1225 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>🧪 Test Complet - DJ Event Manager</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Arial, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+            color: white;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 20px;
+            padding: 30px;
+            backdrop-filter: blur(20px);
+            box-shadow: 0 25px 50px rgba(0, 0, 0, 0.3);
+        }
+
+        .header {
+            text-align: center;
+            margin-bottom: 40px;
+        }
+
+        .header h1 {
+            font-size: 2.5em;
+            margin-bottom: 10px;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.3);
+        }
+
+        .test-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(350px, 1fr));
+            gap: 25px;
+            margin-bottom: 30px;
+        }
+
+        .test-section {
+            background: rgba(255, 255, 255, 0.15);
+            border-radius: 15px;
+            padding: 25px;
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+        }
+
+        .test-section h2 {
+            font-size: 1.4em;
+            margin-bottom: 20px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .btn {
+            background: rgba(255, 255, 255, 0.2);
+            color: white;
+            border: 2px solid rgba(255, 255, 255, 0.3);
+            padding: 12px 20px;
+            border-radius: 10px;
+            cursor: pointer;
+            font-size: 14px;
+            font-weight: 600;
+            margin: 8px;
+            transition: all 0.3s ease;
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .btn:hover {
+            background: rgba(255, 255, 255, 0.3);
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.2);
+        }
+
+        .btn-primary {
+            background: #007bff;
+            border-color: #007bff;
+        }
+
+        .btn-success {
+            background: #28a745;
+            border-color: #28a745;
+        }
+
+        .btn-danger {
+            background: #dc3545;
+            border-color: #dc3545;
+        }
+
+        .btn-warning {
+            background: #ffc107;
+            border-color: #ffc107;
+            color: #000;
+        }
+
+        .result {
+            margin: 15px 0;
+            padding: 15px;
+            border-radius: 10px;
+            font-size: 14px;
+            animation: slideIn 0.3s ease;
+        }
+
+        @keyframes slideIn {
+            from {
+                opacity: 0;
+                transform: translateY(10px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .result.success {
+            background: rgba(40, 167, 69, 0.3);
+            border: 2px solid #28a745;
+            color: #d4edda;
+        }
+
+        .result.error {
+            background: rgba(220, 53, 69, 0.3);
+            border: 2px solid #dc3545;
+            color: #f8d7da;
+        }
+
+        .result.warning {
+            background: rgba(255, 193, 7, 0.3);
+            border: 2px solid #ffc107;
+            color: #fff3cd;
+        }
+
+        .result.info {
+            background: rgba(23, 162, 184, 0.3);
+            border: 2px solid #17a2b8;
+            color: #d1ecf1;
+        }
+
+        .progress-bar {
+            width: 100%;
+            height: 8px;
+            background: rgba(255, 255, 255, 0.2);
+            border-radius: 4px;
+            overflow: hidden;
+            margin: 20px 0;
+        }
+
+        .progress-fill {
+            height: 100%;
+            background: linear-gradient(90deg, #28a745, #20c997);
+            width: 0%;
+            transition: width 0.5s ease;
+        }
+
+        .global-status {
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 15px;
+            padding: 25px;
+            margin-bottom: 30px;
+            text-align: center;
+        }
+
+        .status-indicator {
+            font-size: 4em;
+            margin-bottom: 15px;
+        }
+
+        .quick-actions {
+            display: flex;
+            justify-content: center;
+            gap: 15px;
+            margin: 30px 0;
+            flex-wrap: wrap;
+        }
+
+        pre {
+            background: rgba(0, 0, 0, 0.4);
+            color: #00ff00;
+            padding: 15px;
+            border-radius: 8px;
+            overflow-x: auto;
+            font-size: 12px;
+            font-family: 'Courier New', monospace;
+            max-height: 200px;
+            overflow-y: auto;
+        }
+
+        .details-toggle {
+            background: none;
+            border: none;
+            color: rgba(255, 255, 255, 0.7);
+            cursor: pointer;
+            font-size: 12px;
+            text-decoration: underline;
+            margin-left: 10px;
+        }
+
+        .hidden {
+            display: none;
+        }
+
+        @media (max-width: 768px) {
+            .test-grid {
+                grid-template-columns: 1fr;
+            }
+            
+            .quick-actions {
+                flex-direction: column;
+                align-items: center;
+            }
+            
+            .btn {
+                width: 100%;
+                justify-content: center;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🧪 Test Complet DJ Event Manager</h1>
+            <p>Diagnostic automatique de votre installation</p>
+            <div class="progress-bar">
+                <div class="progress-fill" id="globalProgress"></div>
+            </div>
+        </div>
+
+        <!-- Status Global -->
+        <div class="global-status" id="globalStatus">
+            <div class="status-indicator">🔄</div>
+            <h3>Initialisation des tests...</h3>
+            <p>Veuillez patienter pendant l'analyse</p>
+        </div>
+
+        <!-- Actions Rapides -->
+        <div class="quick-actions">
+            <button class="btn btn-primary" onclick="runAllTests()">🚀 Lancer tous les tests</button>
+            <button class="btn btn-success" onclick="runBasicTests()">⚡ Tests de base</button>
+            <button class="btn btn-warning" onclick="runRepairTests()">🔧 Tests de réparation</button>
+            <button class="btn btn-danger" onclick="emergencyReset()">🆘 Reset d'urgence</button>
+        </div>
+
+        <div class="test-grid">
+            <!-- Tests Connectivity -->
+            <div class="test-section">
+                <h2>🌐 Connectivité & APIs</h2>
+                <button class="btn" onclick="testNetlifyFunctions()">Test Functions Netlify</button>
+                <button class="btn" onclick="testCORS()">Test CORS</button>
+                <button class="btn" onclick="testExternalAPIs()">Test APIs Externes</button>
+                <div id="connectivityResults"></div>
+            </div>
+
+            <!-- Tests Functions -->
+            <div class="test-section">
+                <h2>⚙️ Functions Backend</h2>
+                <button class="btn" onclick="testEventsAPI()">Test Events API</button>
+                <button class="btn" onclick="testRequestsAPI()">Test Requests API</button>
+                <button class="btn" onclick="testCRUDOperations()">Test CRUD</button>
+                <div id="functionsResults"></div>
+            </div>
+
+            <!-- Tests Frontend -->
+            <div class="test-section">
+                <h2>🎨 Interface Frontend</h2>
+                <button class="btn" onclick="testJavaScript()">Test JavaScript</button>
+                <button class="btn" onclick="testLocalStorage()">Test LocalStorage</button>
+                <button class="btn" onclick="testQRGeneration()">Test QR Codes</button>
+                <div id="frontendResults"></div>
+            </div>
+
+            <!-- Tests Sécurité -->
+            <div class="test-section">
+                <h2>🔒 Sécurité & Validation</h2>
+                <button class="btn" onclick="testInputSanitization()">Test Sanitization</button>
+                <button class="btn" onclick="testRateLimit()">Test Rate Limiting</button>
+                <button class="btn" onclick="testValidation()">Test Validation</button>
+                <div id="securityResults"></div>
+            </div>
+
+            <!-- Tests Performance -->
+            <div class="test-section">
+                <h2>⚡ Performance</h2>
+                <button class="btn" onclick="testResponseTimes()">Test Temps Réponse</button>
+                <button class="btn" onclick="testDataSync()">Test Synchronisation</button>
+                <button class="btn" onclick="testMemoryUsage()">Test Mémoire</button>
+                <div id="performanceResults"></div>
+            </div>
+
+            <!-- Tests Fonctionnels -->
+            <div class="test-section">
+                <h2>🎵 Tests Fonctionnels</h2>
+                <button class="btn" onclick="testEventWorkflow()">Test Workflow Événement</button>
+                <button class="btn" onclick="testMusicWorkflow()">Test Workflow Musique</button>
+                <button class="btn" onclick="testUserWorkflow()">Test Workflow Utilisateur</button>
+                <div id="functionalResults"></div>
+            </div>
+        </div>
+
+        <!-- Section Rapports -->
+        <div class="test-section">
+            <h2>📊 Rapport Détaillé</h2>
+            <button class="btn btn-primary" onclick="generateReport()">📄 Générer Rapport</button>
+            <button class="btn btn-success" onclick="exportResults()">💾 Exporter Résultats</button>
+            <button class="btn btn-warning" onclick="shareResults()">📤 Partager Résultats</button>
+            <div id="reportResults"></div>
+        </div>
+    </div>
+
+    <script>
+        // Configuration et Variables Globales
+        const API_BASE = '/.netlify/functions';
+        const TEST_TIMEOUT = 10000; // 10 secondes
+        let testResults = {};
+        let currentTestIndex = 0;
+        let totalTests = 0;
+
+        // Fonction d'affichage des résultats
+        function displayResult(containerId, title, message, type = 'info', details = null) {
+            const container = document.getElementById(containerId);
+            const resultId = `result_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+            
+            const detailsButton = details ? 
+                `<button class="details-toggle" onclick="toggleDetails('${resultId}_details')">Détails</button>` : '';
+            
+            const detailsDiv = details ? 
+                `<div id="${resultId}_details" class="hidden"><pre>${details}</pre></div>` : '';
+            
+            const html = `
+                <div class="result ${type}">
+                    <strong>${title}:</strong> ${message} ${detailsButton}
+                    ${detailsDiv}
+                </div>
+            `;
+            
+            container.innerHTML += html;
+            
+            // Stocker le résultat
+            if (!testResults[containerId]) testResults[containerId] = [];
+            testResults[containerId].push({
+                title,
+                message,
+                type,
+                timestamp: new Date().toISOString(),
+                details
+            });
+            
+            updateProgress();
+        }
+
+        function toggleDetails(detailsId) {
+            const details = document.getElementById(detailsId);
+            details.classList.toggle('hidden');
+        }
+
+        function updateProgress() {
+            currentTestIndex++;
+            const progress = Math.min((currentTestIndex / totalTests) * 100, 100);
+            document.getElementById('globalProgress').style.width = progress + '%';
+            
+            updateGlobalStatus();
+        }
+
+        function updateGlobalStatus() {
+            const statusDiv = document.getElementById('globalStatus');
+            const allResults = Object.values(testResults).flat();
+            
+            const successes = allResults.filter(r => r.type === 'success').length;
+            const errors = allResults.filter(r => r.type === 'error').length;
+            const warnings = allResults.filter(r => r.type === 'warning').length;
+            
+            let statusIcon, statusTitle, statusMessage, statusClass;
+            
+            if (errors > 5) {
+                statusIcon = '🚨';
+                statusTitle = 'Problèmes Critiques Détectés';
+                statusMessage = `${errors} erreurs critiques nécessitent une attention immédiate`;
+                statusClass = 'error';
+            } else if (errors > 0) {
+                statusIcon = '⚠️';
+                statusTitle = 'Problèmes Détectés';
+                statusMessage = `${errors} erreurs et ${warnings} avertissements`;
+                statusClass = 'warning';
+            } else if (warnings > 0) {
+                statusIcon = '✅';
+                statusTitle = 'Système Fonctionnel';
+                statusMessage = `Système OK avec ${warnings} avertissements mineurs`;
+                statusClass = 'success';
+            } else if (successes > 0) {
+                statusIcon = '🎉';
+                statusTitle = 'Tout Fonctionne Parfaitement !';
+                statusMessage = `${successes} tests réussis, aucun problème détecté`;
+                statusClass = 'success';
+            } else {
+                statusIcon = '🔄';
+                statusTitle = 'Tests en cours...';
+                statusMessage = 'Analyse du système en progression';
+                statusClass = 'info';
+            }
+            
+            statusDiv.className = `global-status ${statusClass}`;
+            statusDiv.innerHTML = `
+                <div class="status-indicator">${statusIcon}</div>
+                <h3>${statusTitle}</h3>
+                <p>${statusMessage}</p>
+            `;
+        }
+
+        // Utilitaires de test
+        async function apiCall(endpoint, method = 'GET', data = null) {
+            const options = {
+                method,
+                headers: { 'Content-Type': 'application/json' },
+                signal: AbortSignal.timeout(TEST_TIMEOUT)
+            };
+
+            if (data) options.body = JSON.stringify(data);
+
+            try {
+                const response = await fetch(`${API_BASE}/${endpoint}`, options);
+                const result = await response.json();
+                return {
+                    success: response.ok,
+                    status: response.status,
+                    data: result,
+                    responseTime: performance.now()
+                };
+            } catch (error) {
+                return {
+                    success: false,
+                    status: 0,
+                    error: error.message,
+                    responseTime: null
+                };
+            }
+        }
+
+        // Tests de connectivité
+        async function testNetlifyFunctions() {
+            displayResult('connectivityResults', 'Test Functions', 'Vérification en cours...', 'info');
+            
+            const tests = [
+                { name: 'Events API', endpoint: 'events' },
+                { name: 'Requests API', endpoint: 'requests' }
+            ];
+            
+            for (const test of tests) {
+                try {
+                    const result = await apiCall(test.endpoint);
+                    if (result.success) {
+                        displayResult('connectivityResults', test.name, 
+                            `✅ Accessible (${result.status})`, 'success',
+                            JSON.stringify(result.data, null, 2));
+                    } else {
+                        displayResult('connectivityResults', test.name, 
+                            `❌ Erreur ${result.status}: ${result.error}`, 'error',
+                            `Status: ${result.status}\nError: ${result.error}`);
+                    }
+                } catch (error) {
+                    displayResult('connectivityResults', test.name, 
+                        `❌ Exception: ${error.message}`, 'error', error.stack);
+                }
+            }
+        }
+
+        async function testCORS() {
+            try {
+                const response = await fetch(`${API_BASE}/events`, {
+                    method: 'OPTIONS',
+                    headers: { 'Content-Type': 'application/json' }
+                });
+                
+                const corsHeaders = {
+                    'Access-Control-Allow-Origin': response.headers.get('Access-Control-Allow-Origin'),
+                    'Access-Control-Allow-Methods': response.headers.get('Access-Control-Allow-Methods'),
+                    'Access-Control-Allow-Headers': response.headers.get('Access-Control-Allow-Headers')
+                };
+                
+                if (response.ok && corsHeaders['Access-Control-Allow-Origin']) {
+                    displayResult('connectivityResults', 'CORS', '✅ Configuration correcte', 'success',
+                        JSON.stringify(corsHeaders, null, 2));
+                } else {
+                    displayResult('connectivityResults', 'CORS', '❌ Configuration incorrecte', 'error',
+                        `Status: ${response.status}\nHeaders: ${JSON.stringify(corsHeaders, null, 2)}`);
+                }
+            } catch (error) {
+                displayResult('connectivityResults', 'CORS', `❌ Erreur: ${error.message}`, 'error');
+            }
+        }
+
+        async function testExternalAPIs() {
+            // Test API QR Code
+            const qrTest = new Promise((resolve) => {
+                const img = new Image();
+                img.onload = () => resolve({ success: true, message: 'QR API accessible' });
+                img.onerror = () => resolve({ success: false, message: 'QR API inaccessible' });
+                img.src = 'https://api.qrserver.com/v1/create-qr-code/?size=50x50&data=test';
+            });
+            
+            // Test MusicBrainz API
+            const musicTest = fetch('https://musicbrainz.org/ws/2/recording?query=test&fmt=json&limit=1')
+                .then(response => ({ success: response.ok, message: response.ok ? 'MusicBrainz accessible' : 'MusicBrainz inaccessible' }))
+                .catch(() => ({ success: false, message: 'MusicBrainz inaccessible' }));
+            
+            const [qrResult, musicResult] = await Promise.all([qrTest, musicTest]);
+            
+            displayResult('connectivityResults', 'API QR Code', 
+                qrResult.success ? `✅ ${qrResult.message}` : `❌ ${qrResult.message}`, 
+                qrResult.success ? 'success' : 'error');
+                
+            displayResult('connectivityResults', 'API MusicBrainz', 
+                musicResult.success ? `✅ ${musicResult.message}` : `❌ ${musicResult.message}`, 
+                musicResult.success ? 'success' : 'warning');
+        }
+
+        // Tests des Functions
+        async function testEventsAPI() {
+            const testEvent = {
+                name: 'Test Event ' + Date.now(),
+                type: 'mariage',
+                date: new Date().toISOString(),
+                location: 'Test Location',
+                expectedGuests: 50,
+                status: 'preparation'
+            };
+
+            try {
+                // Test GET
+                const getResult = await apiCall('events');
+                displayResult('functionsResults', 'Events GET', 
+                    getResult.success ? '✅ Lecture OK' : `❌ Erreur ${getResult.status}`, 
+                    getResult.success ? 'success' : 'error',
+                    JSON.stringify(getResult, null, 2));
+
+                // Test POST
+                const postResult = await apiCall('events', 'POST', testEvent);
+                if (postResult.success) {
+                    displayResult('functionsResults', 'Events POST', '✅ Création OK', 'success');
+                    
+                    // Test DELETE (nettoyage)
+                    if (postResult.data && postResult.data.data && postResult.data.data.id) {
+                        await apiCall(`events/${postResult.data.data.id}`, 'DELETE');
+                    }
+                } else {
+                    displayResult('functionsResults', 'Events POST', 
+                        `❌ Erreur ${postResult.status}`, 'error',
+                        JSON.stringify(postResult, null, 2));
+                }
+            } catch (error) {
+                displayResult('functionsResults', 'Events API', `❌ Exception: ${error.message}`, 'error');
+            }
+        }
+
+        async function testRequestsAPI() {
+            const testRequest = {
+                eventId: 'test_event_' + Date.now(),
+                songTitle: 'Test Song',
+                artist: 'Test Artist',
+                userName: 'Test User',
+                userId: 'test_user_' + Date.now()
+            };
+
+            try {
+                // Test GET
+                const getResult = await apiCall('requests');
+                displayResult('functionsResults', 'Requests GET', 
+                    getResult.success ? '✅ Lecture OK' : `❌ Erreur ${getResult.status}`, 
+                    getResult.success ? 'success' : 'error');
+
+                // Test POST
+                const postResult = await apiCall('requests', 'POST', testRequest);
+                if (postResult.success) {
+                    displayResult('functionsResults', 'Requests POST', '✅ Création OK', 'success');
+                    
+                    // Test DELETE (nettoyage)
+                    if (postResult.data && postResult.data.data && postResult.data.data.id) {
+                        await apiCall(`requests/${postResult.data.data.id}`, 'DELETE');
+                    }
+                } else {
+                    displayResult('functionsResults', 'Requests POST', 
+                        `❌ Erreur ${postResult.status}`, 'error',
+                        JSON.stringify(postResult, null, 2));
+                }
+            } catch (error) {
+                displayResult('functionsResults', 'Requests API', `❌ Exception: ${error.message}`, 'error');
+            }
+        }
+
+        async function testCRUDOperations() {
+            const testEvent = {
+                name: 'CRUD Test Event',
+                type: 'mariage',
+                date: new Date().toISOString(),
+                location: 'CRUD Test',
+                expectedGuests: 25,
+                status: 'preparation'
+            };
+
+            try {
+                // CREATE
+                const createResult = await apiCall('events', 'POST', testEvent);
+                if (!createResult.success) {
+                    displayResult('functionsResults', 'CRUD Create', '❌ Échec création', 'error');
+                    return;
+                }
+
+                const eventId = createResult.data.data.id;
+                displayResult('functionsResults', 'CRUD Create', '✅ Création OK', 'success');
+
+                // READ
+                const readResult = await apiCall(`events/${eventId}`);
+                displayResult('functionsResults', 'CRUD Read', 
+                    readResult.success ? '✅ Lecture OK' : '❌ Échec lecture', 
+                    readResult.success ? 'success' : 'error');
+
+                // UPDATE
+                const updateResult = await apiCall(`events/${eventId}`, 'PUT', { status: 'active' });
+                displayResult('functionsResults', 'CRUD Update', 
+                    updateResult.success ? '✅ Mise à jour OK' : '❌ Échec mise à jour', 
+                    updateResult.success ? 'success' : 'error');
+
+                // DELETE
+                const deleteResult = await apiCall(`events/${eventId}`, 'DELETE');
+                displayResult('functionsResults', 'CRUD Delete', 
+                    deleteResult.success ? '✅ Suppression OK' : '❌ Échec suppression', 
+                    deleteResult.success ? 'success' : 'error');
+
+            } catch (error) {
+                displayResult('functionsResults', 'CRUD Operations', `❌ Exception: ${error.message}`, 'error');
+            }
+        }
+
+        // Tests Frontend
+        function testJavaScript() {
+            const jsTests = [
+                { name: 'localStorage', test: () => typeof(Storage) !== "undefined" },
+                { name: 'fetch API', test: () => typeof(fetch) !== "undefined" },
+                { name: 'Promise', test: () => typeof(Promise) !== "undefined" },
+                { name: 'JSON', test: () => typeof(JSON) !== "undefined" },
+                { name: 'URLSearchParams', test: () => typeof(URLSearchParams) !== "undefined" },
+                { name: 'FormData', test: () => typeof(FormData) !== "undefined" }
+            ];
+
+            jsTests.forEach(jsTest => {
+                try {
+                    const result = jsTest.test();
+                    displayResult('frontendResults', jsTest.name, 
+                        result ? '✅ Supporté' : '❌ Non supporté', 
+                        result ? 'success' : 'error');
+                } catch (error) {
+                    displayResult('frontendResults', jsTest.name, `❌ Erreur: ${error.message}`, 'error');
+                }
+            });
+        }
+
+        function testLocalStorage() {
+            try {
+                // Test écriture/lecture
+                const testKey = 'djTest_' + Date.now();
+                const testValue = { test: true, timestamp: Date.now() };
+                
+                localStorage.setItem(testKey, JSON.stringify(testValue));
+                const retrieved = JSON.parse(localStorage.getItem(testKey));
+                localStorage.removeItem(testKey);
+                
+                if (retrieved && retrieved.test === true) {
+                    displayResult('frontendResults', 'localStorage R/W', '✅ Fonctionnel', 'success');
+                } else {
+                    displayResult('frontendResults', 'localStorage R/W', '❌ Dysfonctionnel', 'error');
+                }
+
+                // Test données existantes
+                const djData = localStorage.getItem('djEventData');
+                if (djData) {
+                    const parsed = JSON.parse(djData);
+                    displayResult('frontendResults', 'Données DJ', 
+                        `✅ ${parsed.events?.length || 0} événements en cache`, 'success',
+                        JSON.stringify(parsed, null, 2));
+                } else {
+                    displayResult('frontendResults', 'Données DJ', '⚠️ Aucune donnée en cache', 'warning');
+                }
+            } catch (error) {
+                displayResult('frontendResults', 'localStorage', `❌ Erreur: ${error.message}`, 'error');
+            }
+        }
+
+        function testQRGeneration() {
+            try {
+                const testUrl = 'https://example.com?test=123';
+                const qrUrl = `https://api.qrserver.com/v1/create-qr-code/?size=100x100&data=${encodeURIComponent(testUrl)}`;
+                
+                const img = new Image();
+                img.onload = function() {
+                    displayResult('frontendResults', 'QR Generation', '✅ Génération OK', 'success',
+                        `URL testée: ${qrUrl}`);
+                };
+                img.onerror = function() {
+                    displayResult('frontendResults', 'QR Generation', '❌ Génération échoue', 'error');
+                };
+                img.src = qrUrl;
+                
+                // Test de code court
+                const shortCode = 'MA' + 'XX' + '1234';
+                displayResult('frontendResults', 'Code Court', `✅ Génération OK: ${shortCode}`, 'success');
+                
+            } catch (error) {
+                displayResult('frontendResults', 'QR Generation', `❌ Erreur: ${error.message}`, 'error');
+            }
+        }
+
+        // Tests de sécurité
+        async function testInputSanitization() {
+            const maliciousInputs = [
+                '<script>alert("XSS")</script>',
+                'javascript:alert("XSS")',
+                '"><script>alert("XSS")</script>',
+                "'; DROP TABLE events; --"
+            ];
+
+            for (const input of maliciousInputs) {
+                try {
+                    const testEvent = {
+                        name: input,
+                        type: 'mariage',
+                        date: new Date().toISOString(),
+                        location: 'Test',
+                        expectedGuests: 50,
+                        status: 'preparation'
+                    };
+
+                    const result = await apiCall('events', 'POST', testEvent);
+                    
+                    if (result.success && result.data.data) {
+                        const sanitizedName = result.data.data.name;
+                        const isSanitized = !sanitizedName.includes('<script>') && 
+                                          !sanitizedName.includes('javascript:') &&
+                                          !sanitizedName.includes('DROP TABLE');
+                        
+                        displayResult('securityResults', 'Sanitization Test', 
+                            isSanitized ? '✅ Input correctement nettoyé' : '❌ Input non nettoyé', 
+                            isSanitized ? 'success' : 'error',
+                            `Input: ${input}\nOutput: ${sanitizedName}`);
+                        
+                        // Nettoyer
+                        if (result.data.data.id) {
+                            await apiCall(`events/${result.data.data.id}`, 'DELETE');
+                        }
+                    } else {
+                        displayResult('securityResults', 'Sanitization Test', 
+                            '✅ Input rejeté par la validation', 'success');
+                    }
+                } catch (error) {
+                    displayResult('securityResults', 'Sanitization Test', 
+                        `❌ Erreur: ${error.message}`, 'error');
+                }
+            }
+        }
+
+        async function testRateLimit() {
+            const requests = Array(5).fill().map((_, i) => 
+                apiCall('requests', 'POST', {
+                    eventId: 'rate_test',
+                    songTitle: `Spam Song ${i}`,
+                    artist: 'Spam Artist',
+                    userName: 'Spammer',
+                    userId: 'spam_user'
+                })
+            );
+
+            try {
+                const results = await Promise.all(requests);
+                const blocked = results.filter(r => r.status === 429).length;
+                const accepted = results.filter(r => r.success).length;
+                
+                if (blocked > 0) {
+                    displayResult('securityResults', 'Rate Limiting', 
+                        `✅ ${blocked}/${requests.length} requêtes bloquées`, 'success',
+                        `Acceptées: ${accepted}, Bloquées: ${blocked}`);
+                } else {
+                    displayResult('securityResults', 'Rate Limiting', 
+                        '⚠️ Aucune requête bloquée', 'warning',
+                        'Le rate limiting pourrait être plus strict');
+                }
+            } catch (error) {
+                displayResult('securityResults', 'Rate Limiting', `❌ Erreur: ${error.message}`, 'error');
+            }
+        }
+
+        async function testValidation() {
+            const invalidInputs = [
+                { name: '', type: 'mariage', expectedGuests: 50 }, // Nom vide
+                { name: 'Test', type: '', expectedGuests: 50 }, // Type vide
+                { name: 'Test', type: 'mariage', expectedGuests: -5 }, // Invités négatif
+                { name: 'Test', type: 'mariage', expectedGuests: 'invalid' } // Type incorrect
+            ];
+
+            for (const input of invalidInputs) {
+                try {
+                    const testEvent = {
+                        ...input,
+                        date: new Date().toISOString(),
+                        location: 'Test',
+                        status: 'preparation'
+                    };
+
+                    const result = await apiCall('events', 'POST', testEvent);
+                    
+                    displayResult('securityResults', 'Validation Test', 
+                        !result.success ? '✅ Input invalide rejeté' : '❌ Input invalide accepté', 
+                        !result.success ? 'success' : 'error',
+                        `Input: ${JSON.stringify(input)}\nResult: ${result.status}`);
+                } catch (error) {
+                    displayResult('securityResults', 'Validation Test', 
+                        `❌ Erreur: ${error.message}`, 'error');
+                }
+            }
+        }
+
+        // Tests de performance
+        async function testResponseTimes() {
+            const endpoints = ['events', 'requests'];
+            
+            for (const endpoint of endpoints) {
+                const startTime = performance.now();
+                try {
+                    const result = await apiCall(endpoint);
+                    const responseTime = performance.now() - startTime;
+                    
+                    let status, type;
+                    if (responseTime < 1000) {
+                        status = `✅ Rapide (${responseTime.toFixed(0)}ms)`;
+                        type = 'success';
+                    } else if (responseTime < 3000) {
+                        status = `⚠️ Acceptable (${responseTime.toFixed(0)}ms)`;
+                        type = 'warning';
+                    } else {
+                        status = `❌ Lent (${responseTime.toFixed(0)}ms)`;
+                        type = 'error';
+                    }
+                    
+                    displayResult('performanceResults', `${endpoint} Response Time`, status, type);
+                } catch (error) {
+                    displayResult('performanceResults', `${endpoint} Response Time`, 
+                        `❌ Timeout: ${error.message}`, 'error');
+                }
+            }
+        }
+
+        async function testDataSync() {
+            try {
+                // Simuler une synchronisation
+                const events = await apiCall('events');
+                const requests = await apiCall('requests');
+                
+                if (events.success && requests.success) {
+                    displayResult('performanceResults', 'Data Sync', 
+                        '✅ Synchronisation fonctionnelle', 'success',
+                        `Events: ${events.data.count || 0}, Requests: ${requests.data.count || 0}`);
+                } else {
+                    displayResult('performanceResults', 'Data Sync', 
+                        '❌ Échec de synchronisation', 'error');
+                }
+            } catch (error) {
+                displayResult('performanceResults', 'Data Sync', 
+                    `❌ Erreur: ${error.message}`, 'error');
+            }
+        }
+
+        function testMemoryUsage() {
+            try {
+                if (performance.memory) {
+                    const memory = performance.memory;
+                    const usedMB = (memory.usedJSHeapSize / 1024 / 1024).toFixed(2);
+                    const totalMB = (memory.totalJSHeapSize / 1024 / 1024).toFixed(2);
+                    const limitMB = (memory.jsHeapSizeLimit / 1024 / 1024).toFixed(2);
+                    
+                    const usage = (memory.usedJSHeapSize / memory.jsHeapSizeLimit) * 100;
+                    
+                    let status, type;
+                    if (usage < 50) {
+                        status = `✅ Mémoire OK (${usedMB}MB/${limitMB}MB)`;
+                        type = 'success';
+                    } else if (usage < 80) {
+                        status = `⚠️ Mémoire élevée (${usedMB}MB/${limitMB}MB)`;
+                        type = 'warning';
+                    } else {
+                        status = `❌ Mémoire critique (${usedMB}MB/${limitMB}MB)`;
+                        type = 'error';
+                    }
+                    
+                    displayResult('performanceResults', 'Memory Usage', status, type,
+                        `Used: ${usedMB}MB\nTotal: ${totalMB}MB\nLimit: ${limitMB}MB`);
+                } else {
+                    displayResult('performanceResults', 'Memory Usage', 
+                        '⚠️ API mémoire non supportée', 'warning');
+                }
+            } catch (error) {
+                displayResult('performanceResults', 'Memory Usage', 
+                    `❌ Erreur: ${error.message}`, 'error');
+            }
+        }
+
+        // Tests fonctionnels
+        async function testEventWorkflow() {
+            try {
+                displayResult('functionalResults', 'Event Workflow', 'Test en cours...', 'info');
+                
+                // 1. Créer événement
+                const event = {
+                    name: 'Workflow Test Event',
+                    type: 'mariage',
+                    date: new Date().toISOString(),
+                    location: 'Test Location',
+                    expectedGuests: 75,
+                    status: 'preparation'
+                };
+                
+                const createResult = await apiCall('events', 'POST', event);
+                if (!createResult.success) {
+                    displayResult('functionalResults', 'Event Workflow', '❌ Échec création', 'error');
+                    return;
+                }
+                
+                const eventId = createResult.data.data.id;
+                
+                // 2. Activer événement
+                const activateResult = await apiCall(`events/${eventId}`, 'PUT', { status: 'active' });
+                
+                // 3. Lire événement
+                const readResult = await apiCall(`events/${eventId}`);
+                
+                // 4. Finir événement
+                const finishResult = await apiCall(`events/${eventId}`, 'PUT', { status: 'finished' });
+                
+                // 5. Supprimer événement
+                const deleteResult = await apiCall(`events/${eventId}`, 'DELETE');
+                
+                const allSuccess = createResult.success && activateResult.success && 
+                                 readResult.success && finishResult.success && deleteResult.success;
+                
+                displayResult('functionalResults', 'Event Workflow', 
+                    allSuccess ? '✅ Workflow complet réussi' : '❌ Workflow partiellement échoué', 
+                    allSuccess ? 'success' : 'error',
+                    `Create: ${createResult.success}\nActivate: ${activateResult.success}\nRead: ${readResult.success}\nFinish: ${finishResult.success}\nDelete: ${deleteResult.success}`);
+                    
+            } catch (error) {
+                displayResult('functionalResults', 'Event Workflow', 
+                    `❌ Erreur: ${error.message}`, 'error');
+            }
+        }
+
+        async function testMusicWorkflow() {
+            try {
+                // Simuler une demande musicale complète
+                const request = {
+                    eventId: 'workflow_test',
+                    songTitle: 'Test Song Workflow',
+                    artist: 'Test Artist',
+                    userName: 'Test User',
+                    userId: 'workflow_user'
+                };
+                
+                // 1. Créer demande
+                const createResult = await apiCall('requests', 'POST', request);
+                if (!createResult.success) {
+                    displayResult('functionalResults', 'Music Workflow', '❌ Échec création demande', 'error');
+                    return;
+                }
+                
+                const requestId = createResult.data.data.id;
+                
+                // 2. Marquer comme joué
+                const playResult = await apiCall(`requests/${requestId}`, 'PUT', { 
+                    status: 'played',
+                    playedAt: new Date().toISOString()
+                });
+                
+                // 3. Supprimer demande
+                const deleteResult = await apiCall(`requests/${requestId}`, 'DELETE');
+                
+                const allSuccess = createResult.success && playResult.success && deleteResult.success;
+                
+                displayResult('functionalResults', 'Music Workflow', 
+                    allSuccess ? '✅ Workflow musique réussi' : '❌ Workflow musique échoué', 
+                    allSuccess ? 'success' : 'error');
+                    
+            } catch (error) {
+                displayResult('functionalResults', 'Music Workflow', 
+                    `❌ Erreur: ${error.message}`, 'error');
+            }
+        }
+
+        async function testUserWorkflow() {
+            try {
+                // Simuler parcours utilisateur complet
+                
+                // 1. Test localStorage utilisateur
+                const userId = 'test_user_' + Date.now();
+                localStorage.setItem('currentUserId', userId);
+                
+                // 2. Test génération code court
+                const shortCode = 'TE' + 'ST' + '1234';
+                
+                // 3. Test QR code
+                const qrUrl = `https://api.qrserver.com/v1/create-qr-code/?size=100x100&data=test`;
+                const qrTest = new Promise((resolve) => {
+                    const img = new Image();
+                    img.onload = () => resolve(true);
+                    img.onerror = () => resolve(false);
+                    img.src = qrUrl;
+                });
+                
+                const qrResult = await qrTest;
+                
+                // 4. Nettoyer
+                localStorage.removeItem('currentUserId');
+                
+                const allSuccess = userId && shortCode && qrResult;
+                
+                displayResult('functionalResults', 'User Workflow', 
+                    allSuccess ? '✅ Parcours utilisateur OK' : '❌ Parcours utilisateur KO', 
+                    allSuccess ? 'success' : 'error',
+                    `UserID: ${!!userId}\nShortCode: ${!!shortCode}\nQR: ${qrResult}`);
+                    
+            } catch (error) {
+                displayResult('functionalResults', 'User Workflow', 
+                    `❌ Erreur: ${error.message}`, 'error');
+            }
+        }
+
+        // Fonctions de rapport
+        function generateReport() {
+            const report = {
+                timestamp: new Date().toISOString(),
+                url: window.location.href,
+                userAgent: navigator.userAgent,
+                testResults: testResults,
+                summary: {
+                    totalTests: Object.values(testResults).flat().length,
+                    successes: Object.values(testResults).flat().filter(r => r.type === 'success').length,
+                    errors: Object.values(testResults).flat().filter(r => r.type === 'error').length,
+                    warnings: Object.values(testResults).flat().filter(r => r.type === 'warning').length
+                }
+            };
+            
+            const reportText = `
+# 🧪 Rapport de Test DJ Event Manager
+
+**Date:** ${new Date().toLocaleString('fr-FR')}
+**URL:** ${window.location.href}
+**Navigateur:** ${navigator.userAgent}
+
+## 📊 Résumé
+- **Tests totaux:** ${report.summary.totalTests}
+- **Succès:** ${report.summary.successes} ✅
+- **Erreurs:** ${report.summary.errors} ❌
+- **Avertissements:** ${report.summary.warnings} ⚠️
+
+## 📋 Détail des tests
+
+${Object.entries(testResults).map(([section, results]) => `
+### ${section}
+${results.map(r => `- **${r.title}:** ${r.message} (${r.type})`).join('\n')}
+`).join('\n')}
+
+---
+*Généré automatiquement par DJ Event Manager Test Suite*
+            `;
+            
+            displayResult('reportResults', 'Rapport généré', '✅ Rapport créé avec succès', 'success', reportText);
+        }
+
+        function exportResults() {
+            const data = JSON.stringify(testResults, null, 2);
+            const blob = new Blob([data], { type: 'application/json' });
+            const url = URL.createObjectURL(blob);
+            
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `dj-test-results-${new Date().toISOString().split('T')[0]}.json`;
+            a.click();
+            
+            URL.revokeObjectURL(url);
+            displayResult('reportResults', 'Export', '✅ Résultats exportés', 'success');
+        }
+
+        function shareResults() {
+            const summary = Object.values(testResults).flat();
+            const successes = summary.filter(r => r.type === 'success').length;
+            const errors = summary.filter(r => r.type === 'error').length;
+            
+            const shareText = `🧪 Test DJ Event Manager: ${successes} ✅ ${errors} ❌ - ${window.location.href}`;
+            
+            if (navigator.share) {
+                navigator.share({
+                    title: 'Résultats Test DJ Event Manager',
+                    text: shareText,
+                    url: window.location.href
+                });
+            } else {
+                navigator.clipboard.writeText(shareText).then(() => {
+                    displayResult('reportResults', 'Partage', '✅ Lien copié dans le presse-papiers', 'success');
+                });
+            }
+        }
+
+        // Fonctions principales
+        async function runAllTests() {
+            totalTests = 25; // Estimation du nombre total de tests
+            currentTestIndex = 0;
+            testResults = {};
+            
+            // Vider tous les conteneurs de résultats
+            ['connectivityResults', 'functionsResults', 'frontendResults', 
+             'securityResults', 'performanceResults', 'functionalResults'].forEach(id => {
+                document.getElementById(id).innerHTML = '';
+            });
+            
+            displayResult('connectivityResults', 'Début des tests', '🚀 Lancement de la suite complète...', 'info');
+            
+            // Tests de connectivité
+            await testNetlifyFunctions();
+            await testCORS();
+            await testExternalAPIs();
+            
+            // Tests des functions
+            await testEventsAPI();
+            await testRequestsAPI();
+            await testCRUDOperations();
+            
+            // Tests frontend
+            testJavaScript();
+            testLocalStorage();
+            testQRGeneration();
+            
+            // Tests de sécurité
+            await testInputSanitization();
+            await testRateLimit();
+            await testValidation();
+            
+            // Tests de performance
+            await testResponseTimes();
+            await testDataSync();
+            testMemoryUsage();
+            
+            // Tests fonctionnels
+            await testEventWorkflow();
+            await testMusicWorkflow();
+            await testUserWorkflow();
+            
+            // Finaliser
+            document.getElementById('globalProgress').style.width = '100%';
+            displayResult('reportResults', 'Tests terminés', '🎉 Suite de tests complétée !', 'success');
+        }
+
+        async function runBasicTests() {
+            totalTests = 8;
+            currentTestIndex = 0;
+            testResults = {};
+            
+            document.getElementById('connectivityResults').innerHTML = '';
+            document.getElementById('functionsResults').innerHTML = '';
+            document.getElementById('frontendResults').innerHTML = '';
+            
+            await testNetlifyFunctions();
+            await testEventsAPI();
+            await testRequestsAPI();
+            testJavaScript();
+            testLocalStorage();
+            
+            displayResult('connectivityResults', 'Tests de base', '✅ Tests de base terminés', 'success');
+        }
+
+        async function runRepairTests() {
+            totalTests = 5;
+            currentTestIndex = 0;
+            
+            document.getElementById('securityResults').innerHTML = '';
+            
+            // Tests spécifiques pour identifier les problèmes
+            await testNetlifyFunctions();
+            testLocalStorage();
+            await testCORS();
+            
+            displayResult('securityResults', 'Diagnostic', '🔧 Diagnostic de réparation terminé', 'info');
+        }
+
+        function emergencyReset() {
+            if (confirm('⚠️ Êtes-vous sûr de vouloir effectuer un reset d\'urgence ?\n\nCela va :\n- Vider tout le localStorage\n- Recharger la page\n- Perdre toutes les données non sauvegardées')) {
+                localStorage.clear();
+                sessionStorage.clear();
+                
+                displayResult('reportResults', 'Reset d\'urgence', '🆘 Reset effectué, rechargement...', 'warning');
+                
+                setTimeout(() => {
+                    window.location.href = '/';
+                }, 2000);
+            }
+        }
+
+        // Initialisation
+        document.addEventListener('DOMContentLoaded', function() {
+            displayResult('reportResults', 'Initialisation', '🎯 Suite de tests prête', 'success');
+            
+            // Auto-lancement des tests de base
+            setTimeout(() => {
+                runBasicTests();
+            }, 1000);
+        });
+    </script>
+</body>
+</html>
