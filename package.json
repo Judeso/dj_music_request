@@ -20,5 +20,9 @@
   },
   "engines": {
     "node": ">=18.0.0"
-  }
+  },
+ "dependencies": {
+  "@netlify/neon": "^0.6.0"
+}
+
 }
