@@ -1,0 +1,342 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Test Simple - DJ Event Manager</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+            color: white;
+            margin: 0;
+        }
+        .container {
+            max-width: 800px;
+            margin: 0 auto;
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 20px;
+            padding: 30px;
+            backdrop-filter: blur(20px);
+        }
+        .header {
+            text-align: center;
+            margin-bottom: 30px;
+        }
+        .test-section {
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 15px;
+            padding: 20px;
+            margin: 20px 0;
+        }
+        .btn {
+            background: rgba(255, 255, 255, 0.2);
+            color: white;
+            border: 2px solid rgba(255, 255, 255, 0.3);
+            padding: 12px 20px;
+            border-radius: 10px;
+            cursor: pointer;
+            font-size: 14px;
+            margin: 5px;
+            transition: all 0.3s ease;
+        }
+        .btn:hover {
+            background: rgba(255, 255, 255, 0.3);
+            transform: translateY(-2px);
+        }
+        .btn-danger {
+            background: #dc3545;
+            border-color: #dc3545;
+        }
+        .result {
+            margin: 10px 0;
+            padding: 15px;
+            border-radius: 8px;
+            font-size: 14px;
+        }
+        .success {
+            background: rgba(40, 167, 69, 0.3);
+            border: 2px solid #28a745;
+        }
+        .error {
+            background: rgba(220, 53, 69, 0.3);
+            border: 2px solid #dc3545;
+        }
+        .warning {
+            background: rgba(255, 193, 7, 0.3);
+            border: 2px solid #ffc107;
+        }
+        .info {
+            background: rgba(23, 162, 184, 0.3);
+            border: 2px solid #17a2b8;
+        }
+        pre {
+            background: rgba(0, 0, 0, 0.4);
+            color: #00ff00;
+            padding: 10px;
+            border-radius: 5px;
+            overflow-x: auto;
+            font-size: 12px;
+        }
+        .status-big {
+            font-size: 3em;
+            text-align: center;
+            margin: 20px 0;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🧪 Test Simple DJ Event Manager</h1>
+            <p>Version sécurisée sans erreurs de syntaxe</p>
+        </div>
+
+        <div class="test-section">
+            <h2>🚀 Tests Rapides</h2>
+            <button class="btn" onclick="testAllBasic()">▶️ Test Complet</button>
+            <button class="btn" onclick="testAPIs()">🌐 Test APIs</button>
+            <button class="btn" onclick="testBrowser()">💻 Test Navigateur</button>
+            <button class="btn btn-danger" onclick="fixProblems()">🔧 Réparer</button>
+        </div>
+
+        <div id="globalStatus" class="status-big">🔄</div>
+
+        <div class="test-section">
+            <h2>📊 Résultats</h2>
+            <div id="results"></div>
+        </div>
+
+        <div class="test-section">
+            <h2>🆘 Actions d'Urgence</h2>
+            <button class="btn btn-danger" onclick="clearCache()">🗑️ Vider Cache</button>
+            <button class="btn btn-danger" onclick="resetApp()">🔄 Reset Complet</button>
+            <button class="btn" onclick="goToApp()">🏠 Retour App</button>
+        </div>
+    </div>
+
+    <script>
+        const API_BASE = '/.netlify/functions';
+        let testResults = [];
+
+        function addResult(title, message, type) {
+            const result = {
+                title: title,
+                message: message,
+                type: type,
+                time: new Date().toLocaleTimeString()
+            };
+            
+            testResults.push(result);
+            
+            const resultsDiv = document.getElementById('results');
+            const resultHTML = '<div class="result ' + type + '">' +
+                '<strong>' + title + ':</strong> ' + message +
+                ' <small>(' + result.time + ')</small></div>';
+            
+            resultsDiv.innerHTML += resultHTML;
+            
+            updateGlobalStatus();
+        }
+
+        function updateGlobalStatus() {
+            const statusDiv = document.getElementById('globalStatus');
+            const successes = testResults.filter(r => r.type === 'success').length;
+            const errors = testResults.filter(r => r.type === 'error').length;
+            
+            if (errors > 2) {
+                statusDiv.innerHTML = '🚨';
+                statusDiv.className = 'status-big error';
+            } else if (errors > 0) {
+                statusDiv.innerHTML = '⚠️';
+                statusDiv.className = 'status-big warning';
+            } else if (successes > 0) {
+                statusDiv.innerHTML = '✅';
+                statusDiv.className = 'status-big success';
+            } else {
+                statusDiv.innerHTML = '🔄';
+                statusDiv.className = 'status-big info';
+            }
+        }
+
+        async function testAPI(endpoint, name) {
+            try {
+                const response = await fetch(API_BASE + '/' + endpoint);
+                if (response.ok) {
+                    addResult(name + ' API', 'Accessible - Status ' + response.status, 'success');
+                    return true;
+                } else {
+                    addResult(name + ' API', 'Erreur ' + response.status, 'error');
+                    return false;
+                }
+            } catch (error) {
+                addResult(name + ' API', 'Erreur: ' + error.message, 'error');
+                return false;
+            }
+        }
+
+        async function testAPIs() {
+            addResult('Test APIs', 'Verification en cours...', 'info');
+            
+            const eventsOK = await testAPI('events', 'Events');
+            const requestsOK = await testAPI('requests', 'Requests');
+            
+            if (eventsOK && requestsOK) {
+                addResult('APIs Status', 'Toutes les APIs fonctionnent', 'success');
+            } else {
+                addResult('APIs Status', 'Certaines APIs ne fonctionnent pas', 'error');
+                
+                if (!requestsOK) {
+                    addResult('Diagnostic', 'Verifiez que le fichier se nomme requests.js (avec s)', 'warning');
+                }
+            }
+        }
+
+        function testBrowser() {
+            addResult('Test Navigateur', 'Verification en cours...', 'info');
+            
+            // Test localStorage
+            try {
+                localStorage.setItem('test', 'ok');
+                const test = localStorage.getItem('test');
+                localStorage.removeItem('test');
+                
+                if (test === 'ok') {
+                    addResult('localStorage', 'Fonctionne correctement', 'success');
+                } else {
+                    addResult('localStorage', 'Ne fonctionne pas', 'error');
+                }
+            } catch (e) {
+                addResult('localStorage', 'Erreur: ' + e.message, 'error');
+            }
+            
+            // Test fetch
+            if (typeof fetch !== 'undefined') {
+                addResult('Fetch API', 'Disponible', 'success');
+            } else {
+                addResult('Fetch API', 'Non disponible', 'error');
+            }
+            
+            // Test JSON
+            try {
+                const testObj = {test: true};
+                const jsonStr = JSON.stringify(testObj);
+                const parsed = JSON.parse(jsonStr);
+                addResult('JSON', 'Fonctionne correctement', 'success');
+            } catch (e) {
+                addResult('JSON', 'Erreur: ' + e.message, 'error');
+            }
+            
+            // Test données existantes
+            const djData = localStorage.getItem('djEventData');
+            if (djData) {
+                try {
+                    const parsed = JSON.parse(djData);
+                    const eventCount = parsed.events ? parsed.events.length : 0;
+                    addResult('Donnees DJ', eventCount + ' evenements en cache', 'success');
+                } catch (e) {
+                    addResult('Donnees DJ', 'Cache corrompu', 'error');
+                }
+            } else {
+                addResult('Donnees DJ', 'Aucune donnee en cache', 'warning');
+            }
+        }
+
+        async function testAllBasic() {
+            testResults = [];
+            document.getElementById('results').innerHTML = '';
+            
+            addResult('Test Global', 'Demarrage des verifications...', 'info');
+            
+            await testAPIs();
+            testBrowser();
+            
+            // Test QR Code API
+            const qrTest = new Promise(function(resolve) {
+                const img = new Image();
+                img.onload = function() {
+                    resolve(true);
+                };
+                img.onerror = function() {
+                    resolve(false);
+                };
+                img.src = 'https://api.qrserver.com/v1/create-qr-code/?size=50x50&data=test';
+            });
+            
+            const qrOK = await qrTest;
+            addResult('QR Code API', qrOK ? 'Fonctionne' : 'Inaccessible', qrOK ? 'success' : 'warning');
+            
+            addResult('Test Global', 'Verification terminee', 'info');
+        }
+
+        async function fixProblems() {
+            addResult('Reparation', 'Tentative de reparation...', 'info');
+            
+            // Test si le probleme est le nom du fichier
+            try {
+                const requestResponse = await fetch('/.netlify/functions/request');
+                if (requestResponse.ok) {
+                    addResult('Diagnostic', 'Fichier nomme request au lieu de requests', 'error');
+                    addResult('Solution', 'Renommez request.js en requests.js et re-deployez', 'warning');
+                }
+            } catch (e) {
+                // Normal si le fichier n'existe pas
+            }
+            
+            // Verifier structure
+            try {
+                const eventsResponse = await fetch('/.netlify/functions/events');
+                const requestsResponse = await fetch('/.netlify/functions/requests');
+                
+                if (eventsResponse.ok && !requestsResponse.ok) {
+                    addResult('Probleme Identifie', 'events.js OK mais requests.js manquant', 'error');
+                    addResult('Solution', 'Verifiez le nom du fichier requests.js dans netlify/functions/', 'warning');
+                } else if (!eventsResponse.ok && !requestsResponse.ok) {
+                    addResult('Probleme Identifie', 'Aucune function deployee', 'error');
+                    addResult('Solution', 'Re-deployez avec les fichiers .js dans netlify/functions/', 'warning');
+                }
+            } catch (e) {
+                addResult('Diagnostic', 'Erreur lors du diagnostic: ' + e.message, 'error');
+            }
+        }
+
+        function clearCache() {
+            try {
+                localStorage.clear();
+                sessionStorage.clear();
+                addResult('Cache', 'Cache vide avec succes', 'success');
+                
+                setTimeout(function() {
+                    location.reload();
+                }, 1000);
+            } catch (e) {
+                addResult('Cache', 'Erreur: ' + e.message, 'error');
+            }
+        }
+
+        function resetApp() {
+            if (confirm('Etes-vous sur de vouloir tout remettre a zero ?')) {
+                localStorage.clear();
+                addResult('Reset', 'Reset en cours...', 'warning');
+                
+                setTimeout(function() {
+                    window.location.href = '/';
+                }, 2000);
+            }
+        }
+
+        function goToApp() {
+            window.location.href = '/';
+        }
+
+        // Auto-test au chargement
+        window.addEventListener('load', function() {
+            setTimeout(function() {
+                testAllBasic();
+            }, 500);
+        });
+    </script>
+</body>
+</html>
