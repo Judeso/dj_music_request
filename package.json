@@ -1,0 +1,16 @@
+{
+  "name": "dj-event-manager",
+  "version": "2.0.0",
+  "description": "Gestionnaire d'événements DJ professionnel",
+  "main": "index.html",
+  "scripts": {
+    "dev": "netlify dev",
+    "build": "echo 'Build complete'",
+    "deploy": "netlify deploy --prod"
+  },
+  "keywords": ["dj", "events", "music", "wedding"],
+  "license": "MIT",
+  "devDependencies": {
+    "netlify-cli": "^15.0.0"
+  }
+}
