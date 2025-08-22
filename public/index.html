@@ -1212,7 +1212,27 @@
                             byId.set(inc.id, { ...inc });
                         }
                     }
-                    storage.events = Array.from(byId.values());
+                    // Base list after ID-merge
+                    let mergedEvents = Array.from(byId.values());
+
+                    // Dedupe: remove leftover local_ items that correspond to a server event
+                    try {
+                        const serverEvents = mergedEvents.filter(e => e.id && !String(e.id).startsWith('local_'));
+                        const serverShorts = new Set(serverEvents.filter(e => e.shortCode).map(e => String(e.shortCode).toUpperCase()))
+                        const serverSig = new Set(serverEvents.map(e => `${(e.name||'').trim().toUpperCase()}__${(e.date||'').toString()}`));
+
+                        mergedEvents = mergedEvents.filter(e => {
+                            if (!e.id || !String(e.id).startsWith('local_')) return true;
+                            const sc = e.shortCode ? String(e.shortCode).toUpperCase() : null;
+                            const sig = `${(e.name||'').trim().toUpperCase()}__${(e.date||'').toString()}`;
+                            // Drop local dup if same shortCode OR same (name+date)
+                            if (sc && serverShorts.has(sc)) return false;
+                            if (serverSig.has(sig)) return false;
+                            return true;
+                        });
+                    } catch(_) {}
+
+                    storage.events = mergedEvents;
                 } else if (endpoint === 'requests') {
                     const existing = Array.isArray(storage.requests) ? storage.requests : [];
                     const byId = new Map();
@@ -1238,8 +1258,24 @@
 
             static localFallback(endpoint, method, data) {
                 const storage = JSON.parse(localStorage.getItem('djEventData') || '{"events":[],"requests":[],"lastSync":0}');
-                
-                switch (endpoint) {
+                // Normalize endpoint to base and params
+                let base = endpoint;
+                let query = '';
+                let pathId = null;
+                if (endpoint.includes('?')) {
+                    base = endpoint.split('?')[0];
+                    query = endpoint.split('?')[1];
+                }
+                if (base.includes('/')) {
+                    // e.g., events/<id>
+                    const parts = base.split('/');
+                    base = parts[0];
+                    pathId = parts[1] || null;
+                }
+
+                const params = new URLSearchParams(query);
+
+                switch (base) {
                     case 'events':
                         if (method === 'GET') return { success: true, data: storage.events };
                         if (method === 'POST') {
@@ -1249,26 +1285,15 @@
                             localStorage.setItem('djEventData', JSON.stringify(storage));
                             return { success: true, data: data };
                         }
-                        // Support local PUT/DELETE for events endpoints like "events/<id>"
+                        // Support local PUT/DELETE for events via path or query id
                         if (method === 'PUT' || method === 'DELETE') {
                             try {
-                                let eventId = null;
-                                // path form: events/<id>
-                                if (endpoint.includes('/')) {
-                                    const parts = endpoint.split('/');
-                                    eventId = parts[1] || null;
-                                }
-                                // query form: events?id=<id>
-                                if (!eventId && endpoint.includes('?')) {
-                                    const qs = endpoint.split('?')[1];
-                                    const params = new URLSearchParams(qs);
-                                    eventId = params.get('id');
-                                }
+                                const eventId = pathId || params.get('id');
                                 if (!eventId) break;
                                 const idx = storage.events.findIndex(e => e.id === eventId);
                                 if (idx === -1) break;
                                 if (method === 'PUT') {
-                                    storage.events[idx] = { ...storage.events[idx], ...data, needsSync: true };
+                                    storage.events[idx] = { ...storage.events[idx], ...data };
                                     localStorage.setItem('djEventData', JSON.stringify(storage));
                                     return { success: true, data: storage.events[idx] };
                                 } else {
@@ -1290,22 +1315,12 @@
                         }
                         if (method === 'PUT' || method === 'DELETE') {
                             try {
-                                // support either 'requests/<id>' or 'requests?id=<id>'
-                                let requestId = null;
-                                if (endpoint.includes('/')) {
-                                    const parts = endpoint.split('/');
-                                    requestId = parts[1] || null;
-                                }
-                                if (!requestId && endpoint.includes('?')) {
-                                    const qs = endpoint.split('?')[1];
-                                    const params = new URLSearchParams(qs);
-                                    requestId = params.get('id');
-                                }
+                                const requestId = pathId || params.get('id');
                                 if (!requestId) break;
                                 const idx = storage.requests.findIndex(r => r.id === requestId);
                                 if (idx === -1) break;
                                 if (method === 'PUT') {
-                                    storage.requests[idx] = { ...storage.requests[idx], ...data, needsSync: true };
+                                    storage.requests[idx] = { ...storage.requests[idx], ...data };
                                     localStorage.setItem('djEventData', JSON.stringify(storage));
                                     return { success: true, data: storage.requests[idx] };
                                 } else {
@@ -1362,22 +1377,41 @@
                 const idMap = new Map(); // localId -> serverId
 
                 // Synchroniser les événements en attente
+                // Charger les événements serveurs actuels pour éviter les doublons
+                let currentServerEvents = [];
+                try { currentServerEvents = (await this.getEvents()) || []; } catch(_) { currentServerEvents = []; }
+                const serverShorts = new Set(currentServerEvents.filter(e => e.shortCode).map(e => String(e.shortCode).toUpperCase()));
+                const serverSigSet = new Map(currentServerEvents.map(e => [ `${(e.name||'').trim().toUpperCase()}__${(e.date||'').toString()}`, e ]));
+
                 for (const ev of [...storage.events]) {
                     if (!ev.needsSync) continue;
                     try {
+                        // Si un équivalent serveur existe déjà, ne pas re-poster
+                        const evSig = `${(ev.name||'').trim().toUpperCase()}__${(ev.date||'').toString()}`;
+                        const matchByShort = ev.shortCode && serverShorts.has(String(ev.shortCode).toUpperCase());
+                        const matchBySig = serverSigSet.has(evSig);
+                        if (matchByShort || matchBySig) {
+                            const serverEvent = matchByShort
+                                ? currentServerEvents.find(se => se.shortCode && String(se.shortCode).toUpperCase() === String(ev.shortCode).toUpperCase())
+                                : serverSigSet.get(evSig);
+                            if (serverEvent) {
+                                if (ev.id !== serverEvent.id) idMap.set(ev.id, serverEvent.id);
+                                const idx = storage.events.findIndex(e => e.id === ev.id);
+                                if (idx !== -1) storage.events.splice(idx, 1, { ...serverEvent, needsSync: false });
+                                continue; // skip POST
+                            }
+                        }
+
                         const res = await this.saveEvent(ev);
                         if (res && res.success && res.data) {
                             const serverEvent = res.data;
-                            // Mémoriser le mapping d'ID si l'ID a changé
-                            if (ev.id !== serverEvent.id) {
-                                idMap.set(ev.id, serverEvent.id);
-                            }
-
-                            // Remplacer l'événement local par la version serveur (ID correct)
+                            if (ev.id !== serverEvent.id) { idMap.set(ev.id, serverEvent.id); }
                             const idx = storage.events.findIndex(e => e.id === ev.id);
-                            if (idx !== -1) {
-                                storage.events.splice(idx, 1, { ...serverEvent, needsSync: false });
-                            }
+                            if (idx !== -1) { storage.events.splice(idx, 1, { ...serverEvent, needsSync: false }); }
+                            // mettre à jour la liste serveur en mémoire pour les prochains évitements
+                            currentServerEvents.push(serverEvent);
+                            if (serverEvent.shortCode) serverShorts.add(String(serverEvent.shortCode).toUpperCase());
+                            serverSigSet.set(`${(serverEvent.name||'').trim().toUpperCase()}__${(serverEvent.date||'').toString()}`, serverEvent);
                         }
                     } catch (error) {
                         console.error('Failed to sync event:', error);
@@ -1827,9 +1861,19 @@
         class DataSyncManager {
             static async syncData(force = false) {
                 try {
+                    console.log('=== DÉBUT DataSyncManager.syncData ===', 'force:', force);
                     const now = Date.now();
                     if (!force && now - APP_STATE.lastSyncTime < CONFIG.SYNC_INTERVAL) {
-                        return; // Éviter la sur-synchronisation
+                        return;
+                    }
+
+                    if (APP_STATE.isOnline) {
+                        console.log('Appel syncPendingData...');
+                        await NetlifyDataManager.syncPendingData();
+                    }
+                    // Synchroniser d'abord les données en attente si on revient en ligne
+                    if (APP_STATE.isOnline) {
+                        await NetlifyDataManager.syncPendingData();
                     }
 
                     console.log('Synchronizing data...');
@@ -1839,10 +1883,13 @@
                         await NetlifyDataManager.syncPendingData();
                     }
 
+                    console.log('Récupération events/requests du serveur...');
                     const [events, requests] = await Promise.all([
                         NetlifyDataManager.getEvents(),
                         NetlifyDataManager.getRequests()
                     ]);
+                    console.log('Events serveur reçus:', events?.length || 0, 'events');
+                    console.log('Requests serveur reçues:', requests?.length || 0, 'requests');
 
                     // Conserver les éléments locaux en attente (needsSync) pour éviter leur disparition
                     try {
@@ -1857,7 +1904,21 @@
                         const serverEventIds = new Set(serverEvents.map(e => e.id));
                         const serverRequestIds = new Set(serverRequests.map(r => r.id));
 
-                        const mergedEvents = serverEvents.concat(pendingLocalEvents.filter(e => !serverEventIds.has(e.id)));
+                        // Merge with dedupe: prefer server events; drop local duplicates by shortCode or (name+date)
+            let mergedEvents = serverEvents.concat(pendingLocalEvents.filter(e => !serverEventIds.has(e.id)));
+            try {
+                const serverList = mergedEvents.filter(e => e.id && !String(e.id).startsWith('local_'));
+                const serverShorts = new Set(serverList.filter(e => e.shortCode).map(e => String(e.shortCode).toUpperCase()));
+                const serverSig = new Set(serverList.map(e => `${(e.name||'').trim().toUpperCase()}__${(e.date||'').toString()}`));
+                mergedEvents = mergedEvents.filter(e => {
+                    if (!e.id || !String(e.id).startsWith('local_')) return true;
+                    const sc = e.shortCode ? String(e.shortCode).toUpperCase() : null;
+                    const sig = `${(e.name||'').trim().toUpperCase()}__${(e.date||'').toString()}`;
+                    if (sc && serverShorts.has(sc)) return false;
+                    if (serverSig.has(sig)) return false;
+                    return true;
+                });
+            } catch(_) {}
                         const mergedRequests = serverRequests.concat(pendingLocalRequests.filter(r => !serverRequestIds.has(r.id)));
 
                         APP_STATE.events = mergedEvents;
@@ -2220,22 +2281,46 @@
 
         async function changeEventStatus(eventId, newStatus) {
             try {
+                console.log('=== DÉBUT changeEventStatus ===');
+                console.log('eventId:', eventId, 'newStatus:', newStatus);
+                console.log('APP_STATE.events avant:', APP_STATE.events.map(e => ({id: e.id, name: e.name, status: e.status})));
+                
                 // Mettre à jour localement d'abord pour une réponse rapide
                 let eventIndex = APP_STATE.events.findIndex(e => e.id === eventId);
                 if (eventIndex !== -1) {
                     // Si l'événement a un ID local, tenter d'abord de le sauvegarder côté serveur pour obtenir un vrai ID
                     if (APP_STATE.events[eventIndex].id && APP_STATE.events[eventIndex].id.startsWith('local_')) {
                         try {
+                            console.log('Event avec ID local détecté, pré-sauvegarde...');
                             const localEvent = APP_STATE.events[eventIndex];
                             const res = await NetlifyDataManager.saveEvent(localEvent);
                             if (res && res.success && res.data) {
+                                console.log('Pré-sauvegarde réussie, remplacement local->serveur:', res.data);
                                 const serverEvent = res.data;
-                                // Remplacer l'événement en mémoire et dans le cache local
                                 APP_STATE.events.splice(eventIndex, 1, serverEvent);
                                 NetlifyDataManager.updateLocalCache('events', APP_STATE.events);
-                                // Mettre à jour l'eventId pour la suite (PUT)
                                 eventId = serverEvent.id;
                                 eventIndex = APP_STATE.events.findIndex(e => e.id === eventId);
+                                // Nettoyer le stockage local: supprimer les doublons locaux correspondants
+                                try {
+                                    const storage = JSON.parse(localStorage.getItem('djEventData') || '{"events":[],"requests":[]}');
+                                    const beforeLen = (storage.events || []).length;
+                                    const sig = `${(serverEvent.name||'').trim().toUpperCase()}__${(serverEvent.date||'').toString()}`;
+                                    const sc = serverEvent.shortCode ? String(serverEvent.shortCode).toUpperCase() : null;
+                                    storage.events = (storage.events || []).filter(e => {
+                                        const isLocal = e.id && String(e.id).startsWith('local_');
+                                        if (!isLocal) return true;
+                                        const eSig = `${(e.name||'').trim().toUpperCase()}__${(e.date||'').toString()}`;
+                                        const eSc = e.shortCode ? String(e.shortCode).toUpperCase() : null;
+                                        if (sc && eSc && sc === eSc) return false;
+                                        if (eSig === sig) return false;
+                                        return true;
+                                    });
+                                    if ((storage.events || []).length !== beforeLen) {
+                                        console.log('Nettoyage localStorage: supprimé', beforeLen - (storage.events || []).length, 'doublons locaux');
+                                        localStorage.setItem('djEventData', JSON.stringify(storage));
+                                    }
+                                } catch(_) {}
                             }
                         } catch (e) {
                             console.warn('Sauvegarde préalable de l\'événement échouée, activation en local uniquement', e);
@@ -2253,12 +2338,11 @@
                     
                     // Ensuite synchroniser avec le serveur
                     try {
-                        const updatePayload = { 
-                            status: newStatus,
-                            updatedAt: new Date().toISOString()
-                        };
+                        const updatePayload = { status: newStatus, updatedAt: new Date().toISOString() };
+                        console.log('Appel PUT updateEvent avec payload:', updatePayload, 'pour eventId:', eventId);
                         const apiResult = await NetlifyDataManager.updateEvent(eventId, updatePayload);
                         console.log('UpdateEvent response:', apiResult);
+                        console.log('APP_STATE.events après PUT:', APP_STATE.events.map(e => ({id: e.id, name: e.name, status: e.status})));
                         
                         const statusMessages = {
                             'active': 'L\'événement est maintenant actif ! Les utilisateurs peuvent faire leurs demandes.',
@@ -2268,8 +2352,11 @@
                         
                         NotificationManager.show(statusMessages[newStatus]);
                         
+                        console.log('Avant syncData forcé...');
                         await DataSyncManager.syncData(true);
+                        console.log('APP_STATE.events après syncData:', APP_STATE.events.map(e => ({id: e.id, name: e.name, status: e.status})));
                         await updateDJDashboard(true);
+                        console.log('=== FIN changeEventStatus (succès) ===');
                         
                     } catch (error) {
                         console.error('UpdateEvent failed:', error);

@@ -95,30 +95,41 @@ export default async (request, context) => {
       }
 
       // Construire dynamiquement les champs à mettre à jour selon les colonnes probables
-      // Nous mettons à jour prudemment: name, date, status, location, expected_guests, description, updated_at, short_code
-      const fields = [];
-      const values = [];
+      // Nous mettons à jour prudemment: name, date, status, location, expected_guests, description, short_code
+      const baseFields = [];
+      if (body.name != null) { baseFields.push(sql`name = ${body.name}`); }
+      if (body.date != null) { baseFields.push(sql`date = ${body.date}`); }
+      if (body.status != null) { baseFields.push(sql`status = ${body.status}`); }
+      if (body.location != null) { baseFields.push(sql`location = ${body.location}`); }
+      if (body.expectedGuests != null) { baseFields.push(sql`expected_guests = ${body.expectedGuests}`); }
+      if (body.description != null) { baseFields.push(sql`description = ${body.description}`); }
+      if (body.shortCode != null) { baseFields.push(sql`short_code = ${body.shortCode}`); }
 
-      if (body.name != null) { fields.push(sql`name = ${body.name}`); }
-      if (body.date != null) { fields.push(sql`date = ${body.date}`); }
-      if (body.status != null) { fields.push(sql`status = ${body.status}`); }
-      if (body.location != null) { fields.push(sql`location = ${body.location}`); }
-      if (body.expectedGuests != null) { fields.push(sql`expected_guests = ${body.expectedGuests}`); }
-      if (body.description != null) { fields.push(sql`description = ${body.description}`); }
-      if (body.shortCode != null) { fields.push(sql`short_code = ${body.shortCode}`); }
-      // Toujours mettre à jour updated_at si possible
-      fields.push(sql`updated_at = ${body.updatedAt || new Date().toISOString()}`);
-
-      if (fields.length === 0) {
+      if (baseFields.length === 0) {
         return new Response(JSON.stringify({ success: false, error: 'Aucune donnée à mettre à jour' }), { status: 400, headers });
       }
-
-      const [updated] = await sql`
-        UPDATE events
-        SET ${sql.join(fields, sql`, `)}
-        WHERE id = ${eventId}
-        RETURNING *;
-      `;
+      
+      let updated;
+      const updatedAtValue = body.updatedAt || new Date().toISOString();
+      try {
+        // Tentative 1: avec updated_at
+        const fieldsWithUpdated = [...baseFields, sql`updated_at = ${updatedAtValue}`];
+        [updated] = await sql`
+          UPDATE events
+          SET ${sql.join(fieldsWithUpdated, sql`, `)}
+          WHERE id = ${eventId}
+          RETURNING *;
+        `;
+      } catch (e) {
+        console.warn('PUT events: retrying without updated_at field due to error:', e?.message || e);
+        // Tentative 2: sans updated_at (pour schémas ne possédant pas cette colonne)
+        [updated] = await sql`
+          UPDATE events
+          SET ${sql.join(baseFields, sql`, `)}
+          WHERE id = ${eventId}
+          RETURNING *;
+        `;
+      }
 
       if (!updated) {
         return new Response(JSON.stringify({ success: false, error: "Événement introuvable pour mise à jour" }), { status: 404, headers });
