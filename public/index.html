@@ -2243,6 +2243,27 @@
                 </div>
             `;
             
+            // Enregistrer l'événement courant pour les actions (téléchargement, impression...)
+            APP_STATE.selectedEventId = eventId;
+
+            // Renseigner le code court affiché, le QR et le lien direct
+            const codeEl = document.getElementById('eventCodeDisplay');
+            const qrImgEl = document.getElementById('qrCodeImage');
+            const directLinkEl = document.getElementById('directLinkDisplay');
+
+            if (codeEl) codeEl.textContent = event.shortCode || 'QR Code';
+
+            if (qrImgEl) {
+                const qrUrl = QRCodeManager.generateQRCodeURL(eventId, 200, 'png');
+                qrImgEl.src = qrUrl;
+                qrImgEl.alt = `QR Code pour ${event.name}`;
+            }
+
+            if (directLinkEl) {
+                const shareUrl = `${window.location.origin}/participant.html?event=${eventId}`;
+                directLinkEl.textContent = shareUrl;
+            }
+
             modal.classList.add('active');
         }
 
