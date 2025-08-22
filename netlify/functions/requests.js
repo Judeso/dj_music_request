@@ -36,6 +36,9 @@ export default async (request, context) => {
     if (request.method === "POST") {
       const body = await request.json();
       
+      // Helper: validate UUID v4 format
+      const isUUID = (val) => typeof val === 'string' && /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(val);
+      
       // Validation des données
       if (!body.songTitle || !body.artist || !body.userName) {
         return new Response(JSON.stringify({ 
@@ -43,6 +46,9 @@ export default async (request, context) => {
           error: "Titre, artiste et nom d'utilisateur requis" 
         }), { status: 400, headers });
       }
+
+      // user_id doit être un UUID en base; si le client envoie un identifiant custom, on génère un UUID côté serveur
+      const safeUserId = isUUID(body.userId) ? body.userId : crypto.randomUUID();
 
       const [newRequest] = await sql`
         INSERT INTO requests (id, event_id, song_title, artist, user_name, user_id, status, timestamp)
@@ -52,7 +58,7 @@ export default async (request, context) => {
           ${body.songTitle},
           ${body.artist},
           ${body.userName},
-          ${body.userId || crypto.randomUUID()},
+          ${safeUserId},
           'pending',
           ${new Date().toISOString()}
         )
