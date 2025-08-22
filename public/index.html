@@ -189,6 +189,7 @@
             font-size: 32px;
             font-weight: 800;
             background: var(--gradient);
+            background-clip: text;
             -webkit-background-clip: text;
             -webkit-text-fill-color: transparent;
             margin-bottom: 10px;
@@ -430,6 +431,7 @@
             font-size: 28px;
             font-weight: 800;
             background: var(--gradient);
+            background-clip: text;
             -webkit-background-clip: text;
             -webkit-text-fill-color: transparent;
             margin-bottom: 10px;
@@ -2246,7 +2248,7 @@
 
         function shareEvent(eventId) {
             const event = APP_STATE.events.find(e => e.id === eventId);
-            const shareUrl = `${window.location.origin}${window.location.pathname}?event=${eventId}`;
+            const shareUrl = `${window.location.origin}/participant.html?event=${eventId}`;
             
             if (navigator.share) {
                 navigator.share({
@@ -2260,7 +2262,7 @@
         }
 
         function copyEventLink(eventId) {
-            const shareUrl = `${window.location.origin}${window.location.pathname}?event=${eventId}`;
+            const shareUrl = `${window.location.origin}/participant.html?event=${eventId}`;
             
             navigator.clipboard.writeText(shareUrl).then(() => {
                 NotificationManager.show('Lien copié dans le presse-papiers !');
@@ -2273,6 +2275,29 @@
                 document.body.removeChild(textArea);
                 NotificationManager.show('Lien copié !');
             });
+        }
+
+        // DJ wrappers for QR actions (participant flow is on participant.html)
+        function getCurrentEventId() {
+            return APP_STATE.selectedEventId;
+        }
+
+        function downloadQRCode(format = 'png', size = 300) {
+            const eventId = APP_STATE.selectedEventId;
+            if (!eventId) {
+                NotificationManager.show('Sélectionnez un événement', 'warning');
+                return;
+            }
+            QRCodeManager.downloadQRCode(eventId, format, size);
+        }
+
+        function printQRCode() {
+            const eventId = APP_STATE.selectedEventId;
+            if (!eventId) {
+                NotificationManager.show('Sélectionnez un événement', 'warning');
+                return;
+            }
+            QRCodeManager.printQRCode(eventId);
         }
 
         async function playRequest(requestId) {
@@ -2305,527 +2330,7 @@
             }
         }
 
-        // Interface Utilisateur avec QR Codes
-        async function initUserInterface() {
-            await DataSyncManager.syncData();
-            updateActiveEventsList();
-            
-            const urlParams = new URLSearchParams(window.location.search);
-            const eventId = urlParams.get('event');
-            if (eventId) {
-                // Accès direct par lien/QR code
-                selectEvent(eventId);
-                showAccessMethod('list'); // Afficher directement la sélection
-            }
-            
-            setupMusicSearch();
-            setupCodeInput();
-            
-            if (!APP_STATE.currentUserId) {
-                APP_STATE.currentUserId = localStorage.getItem('currentUserId') || 
-                    'user_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9);
-                localStorage.setItem('currentUserId', APP_STATE.currentUserId);
-            }
-        }
-
-        function setupCodeInput() {
-            const codeInput = document.getElementById('eventCode');
-            if (!codeInput) return;
-
-            codeInput.addEventListener('input', function() {
-                const code = this.value.trim().toUpperCase();
-                this.value = code;
-                
-                // Réinitialiser le style
-                this.classList.remove('success', 'error');
-                
-                if (code.length >= 3) {
-                    const event = QRCodeManager.findEventByCode(code);
-                    if (event && event.status === 'active') {
-                        this.classList.add('success');
-                    } else if (code.length >= 5) {
-                        this.classList.add('error');
-                    }
-                }
-            });
-
-            codeInput.addEventListener('keypress', function(e) {
-                if (e.key === 'Enter') {
-                    accessEventByCode();
-                }
-            });
-        }
-
-        function showAccessMethod(method) {
-            // Gérer les onglets
-            document.querySelectorAll('.access-tab').forEach(tab => tab.classList.remove('active'));
-            document.querySelectorAll('.access-panel').forEach(panel => panel.classList.remove('active'));
-            
-            if (method === 'qr') {
-                document.querySelector('[onclick="showAccessMethod(\'qr\')"]').classList.add('active');
-                document.getElementById('accessByQR').classList.add('active');
-            } else {
-                document.querySelector('[onclick="showAccessMethod(\'list\')"]').classList.add('active');
-                document.getElementById('accessByList').classList.add('active');
-            }
-        }
-
-        function accessEventByCode() {
-            const codeInput = document.getElementById('eventCode');
-            const code = codeInput.value.trim().toUpperCase();
-            
-            if (!code) {
-                NotificationManager.show('Veuillez entrer un code événement', 'error');
-                codeInput.focus();
-                return;
-            }
-            
-            const event = QRCodeManager.findEventByCode(code);
-            
-            if (!event) {
-                NotificationManager.show('Code événement introuvable', 'error');
-                codeInput.classList.add('error');
-                codeInput.focus();
-                return;
-            }
-            
-            if (event.status !== 'active') {
-                NotificationManager.show('Cet événement n\'accepte plus de demandes musicales', 'warning');
-                return;
-            }
-            
-            // Succès ! Accéder à l'événement
-            codeInput.classList.add('success');
-            selectEvent(event.id);
-            NotificationManager.show(`✅ Connecté à "${event.name}" !`);
-            
-            // Passer automatiquement à l'interface de demande
-            setTimeout(() => {
-                document.getElementById('songSearch').focus();
-            }, 1000);
-        }
-
-        // Fonctions globales pour les QR codes
-        window.downloadQRCode = function(eventId, format = 'png', size = 300) {
-            QRCodeManager.downloadQRCode(eventId, format, size);
-        };
-
-        window.printQRCode = function(eventId) {
-            QRCodeManager.printQRCode(eventId);
-        };
-
-        window.getCurrentEventId = function() {
-            return APP_STATE.selectedEventId;
-        };
-
-        window.showAccessMethod = showAccessMethod;
-        window.accessEventByCode = accessEventByCode;
-
-        function updateActiveEventsList() {
-            const eventsList = document.getElementById('eventsList');
-            const activeEvents = APP_STATE.events.filter(e => e.status === 'active');
-            
-            if (activeEvents.length === 0) {
-                eventsList.innerHTML = `
-                    <div style="text-align: center; padding: 40px; color: #64748b;">
-                        <div style="font-size: 48px; margin-bottom: 20px;">🎵</div>
-                        <h3>Aucun événement actif</h3>
-                        <p>Il n'y a actuellement aucun événement en cours.</p>
-                        <small style="margin-top: 15px; display: block;">
-                            💡 Demandez le code QR ou le code événement au DJ
-                        </small>
-                    </div>
-                `;
-                return;
-            }
-            
-            // Générer des codes courts pour les événements qui n'en ont pas
-            let hasChanges = false;
-            activeEvents.forEach(event => {
-                if (!event.shortCode) {
-                    event.shortCode = QRCodeManager.generateShortCode(event.name, event.type);
-                    hasChanges = true;
-                }
-            });
-            
-            if (hasChanges) {
-                DataManager.save();
-            }
-            
-            eventsList.innerHTML = activeEvents.map(event => {
-                const date = new Date(event.date);
-                const eventRequests = APP_STATE.musicRequests.filter(r => r.eventId === event.id);
-                const uniqueUsers = new Set(eventRequests.map(r => r.userId)).size;
-                
-                return `
-                    <div class="event-option ${APP_STATE.selectedEventId === event.id ? 'selected' : ''}" onclick="selectEvent('${event.id}')">
-                        <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 10px;">
-                            <h4 style="font-size: 18px; color: var(--dark); margin: 0;">${event.name}</h4>
-                            <div style="background: var(--primary); color: white; padding: 4px 8px; border-radius: 6px; font-family: monospace; font-size: 12px; font-weight: bold;">
-                                ${event.shortCode}
-                            </div>
-                        </div>
-                        <div style="display: flex; justify-content: space-between; align-items: center; color: #64748b; font-size: 14px;">
-                            <span>📅 ${date.toLocaleDateString('fr-FR')}</span>
-                            <span>📍 ${event.location}</span>
-                        </div>
-                        <div style="margin-top: 8px; font-size: 12px; color: #94a3b8;">
-                            ${eventRequests.length} demandes • ${uniqueUsers} participants
-                        </div>
-                    </div>
-                `;
-            }).join('');
-        }
-
-        function selectEvent(eventId) {
-            APP_STATE.selectedEventId = eventId;
-            
-            document.querySelectorAll('.event-option').forEach(el => el.classList.remove('selected'));
-            const selectedOption = document.querySelector(`[onclick="selectEvent('${eventId}')"]`);
-            if (selectedOption) {
-                selectedOption.classList.add('selected');
-            }
-            
-            document.getElementById('musicRequestForm').classList.remove('hidden');
-            updateUserQueuePosition();
-        }
-
-        function setupMusicSearch() {
-            const searchInput = document.getElementById('songSearch');
-            const searchResults = document.getElementById('searchResults');
-            
-            searchInput.addEventListener('input', function() {
-                const query = this.value.trim();
-                
-                if (APP_STATE.searchTimeout) {
-                    clearTimeout(APP_STATE.searchTimeout);
-                }
-                
-                if (query.length < 2) {
-                    searchResults.classList.remove('show');
-                    APP_STATE.selectedSong = null;
-                    return;
-                }
-                
-                // Afficher immédiatement un indicateur de recherche
-                searchResults.innerHTML = '<div class="search-result" style="text-align: center; opacity: 0.7;"><div class="result-title">🔍 Recherche en cours...</div></div>';
-                searchResults.classList.add('show');
-                
-                APP_STATE.searchTimeout = setTimeout(async () => {
-                    try {
-                        const results = await SimpleMusicSearch.searchSongs(query);
-                        displaySearchResults(results, query);
-                    } catch (error) {
-                        console.error('Search error:', error);
-                        // En cas d'erreur, permettre la saisie libre
-                        displayFreeTextOption(query);
-                    }
-                }, CONFIG.SEARCH_DEBOUNCE);
-            });
-            
-            function displaySearchResults(results, originalQuery) {
-                if (results.length === 0) {
-                    displayFreeTextOption(originalQuery);
-                    return;
-                }
-                
-                let resultsHTML = results.map(song => {
-                    const songData = JSON.stringify(song).replace(/'/g, "\\'").replace(/"/g, "&quot;");
-                    return `
-                    <div class="search-result" onclick="selectSong('${songData}')">
-                        <div class="result-title">${song.title}</div>
-                        <div class="result-artist">par ${song.artist}</div>
-                    </div>
-                    `;
-                }).join('');
-                
-                // Toujours ajouter l'option de saisie libre en bas
-                const escapedQuery = originalQuery.replace(/'/g, "\\'").replace(/"/g, "&quot;");
-                resultsHTML += `
-                    <div class="search-result" onclick="selectFreeText('${escapedQuery}')" 
-                         style="background: #f0f9ff; border-top: 1px solid #e2e8f0;">
-                        <div class="result-title">✏️ "${originalQuery}"</div>
-                        <div class="result-artist">Utiliser ce titre tel quel</div>
-                    </div>
-                `;
-                
-                searchResults.innerHTML = resultsHTML;
-                searchResults.classList.add('show');
-            }
-            
-            function displayFreeTextOption(query) {
-                searchResults.innerHTML = `
-                    <div class="search-result" onclick="selectFreeText('${query.replace(/'/g, "\\'")}')" 
-                         style="background: #f0f9ff;">
-                        <div class="result-title">✏️ "${query}"</div>
-                        <div class="result-artist">Aucune suggestion trouvée - utiliser ce titre</div>
-                    </div>
-                `;
-                searchResults.classList.add('show');
-            }
-            
-            // Fermer les résultats si clic ailleurs
-            document.addEventListener('click', function(e) {
-                if (!searchInput.contains(e.target) && !searchResults.contains(e.target)) {
-                    searchResults.classList.remove('show');
-                }
-            });
-            
-            // Gérer les touches fléchées et Entrée
-            searchInput.addEventListener('keydown', function(e) {
-                const visibleResults = searchResults.querySelectorAll('.search-result');
-                
-                if (e.key === 'Enter') {
-                    e.preventDefault();
-                    if (visibleResults.length > 0) {
-                        // Sélectionner le premier résultat par défaut
-                        visibleResults[0].click();
-                    }
-                }
-            });
-            
-            // Fonctions globales pour la sélection
-            window.selectSong = function(songJson) {
-                try {
-                    APP_STATE.selectedSong = JSON.parse(songJson);
-                    searchInput.value = `${APP_STATE.selectedSong.title} - ${APP_STATE.selectedSong.artist}`;
-                    searchResults.classList.remove('show');
-                    
-                    // Feedback visuel
-                    searchInput.style.borderColor = 'var(--success)';
-                    setTimeout(() => {
-                        searchInput.style.borderColor = '';
-                    }, 1000);
-                } catch (error) {
-                    console.error('Error selecting song:', error);
-                }
-            };
-            
-            window.selectFreeText = function(title) {
-                APP_STATE.selectedSong = {
-                    title: title,
-                    artist: 'Artiste à préciser', // L'utilisateur peut modifier
-                    source: 'manual'
-                };
-                searchInput.value = title;
-                searchResults.classList.remove('show');
-                
-                // Feedback visuel
-                searchInput.style.borderColor = 'var(--info)';
-                setTimeout(() => {
-                    searchInput.style.borderColor = '';
-                }, 1000);
-            };
-        }
-
-        async function handleMusicRequest(event) {
-            event.preventDefault();
-            
-            if (!APP_STATE.selectedEventId) {
-                NotificationManager.show('Veuillez sélectionner un événement', 'error');
-                return;
-            }
-            
-            // Vérifier le cooldown anti-spam
-            const now = Date.now();
-            const timeSinceLastRequest = now - APP_STATE.lastRequestTime;
-            
-            if (timeSinceLastRequest < CONFIG.ANTI_SPAM_COOLDOWN) {
-                const remainingTime = Math.ceil((CONFIG.ANTI_SPAM_COOLDOWN - timeSinceLastRequest) / 1000);
-                NotificationManager.show(`Veuillez attendre ${remainingTime} secondes avant de faire une nouvelle demande`, 'warning');
-                startCooldownTimer(remainingTime);
-                return;
-            }
-            
-            const songInput = document.getElementById('songSearch').value.trim();
-            const userName = SecurityManager.sanitizeInput(document.getElementById('userName').value);
-            
-            if (!songInput || !userName) {
-                NotificationManager.show('Veuillez remplir tous les champs', 'error');
-                if (!songInput) document.getElementById('songSearch').focus();
-                else document.getElementById('userName').focus();
-                return;
-            }
-            
-            // Vérifier les limites par utilisateur
-            const userRequests = APP_STATE.musicRequests.filter(
-                r => r.userId === APP_STATE.currentUserId && 
-                     r.eventId === APP_STATE.selectedEventId && 
-                     r.status === 'pending'
-            );
-            
-            if (userRequests.length >= CONFIG.MAX_REQUESTS_PER_USER) {
-                NotificationManager.show(`Vous avez déjà ${CONFIG.MAX_REQUESTS_PER_USER} demandes en attente pour cet événement`, 'warning');
-                return;
-            }
-            
-            // Préparer les données de la chanson
-            let songData;
-            if (APP_STATE.selectedSong && APP_STATE.selectedSong.source !== 'manual') {
-                // Chanson sélectionnée depuis les suggestions
-                songData = {
-                    songTitle: APP_STATE.selectedSong.title,
-                    artist: APP_STATE.selectedSong.artist
-                };
-            } else if (APP_STATE.selectedSong && APP_STATE.selectedSong.source === 'manual') {
-                // Saisie libre avec titre personnalisé
-                songData = {
-                    songTitle: APP_STATE.selectedSong.title,
-                    artist: APP_STATE.selectedSong.artist
-                };
-            } else {
-                // Parsing automatique du texte libre
-                if (songInput.includes(' - ')) {
-                    const parts = songInput.split(' - ');
-                    songData = {
-                        songTitle: parts[0].trim(),
-                        artist: parts.slice(1).join(' - ').trim()
-                    };
-                } else {
-                    songData = {
-                        songTitle: songInput,
-                        artist: 'Artiste à préciser'
-                    };
-                }
-            }
-            
-            // Vérifier qu'on n'a pas la même chanson en attente
-            const duplicateRequest = APP_STATE.musicRequests.find(
-                r => r.userId === APP_STATE.currentUserId && 
-                     r.eventId === APP_STATE.selectedEventId && 
-                     r.status === 'pending' &&
-                     r.songTitle.toLowerCase() === songData.songTitle.toLowerCase()
-            );
-            
-            if (duplicateRequest) {
-                NotificationManager.show('Vous avez déjà demandé cette chanson', 'warning');
-                return;
-            }
-            
-            const requestData = {
-                eventId: APP_STATE.selectedEventId,
-                ...songData,
-                userName: userName,
-                userId: APP_STATE.currentUserId,
-                timestamp: new Date().toISOString(),
-                status: 'pending',
-                userAgent: navigator.userAgent.substring(0, 100) // Pour l'anti-spam
-            };
-            
-            const submitBtn = document.getElementById('submitBtn');
-            const originalText = submitBtn.innerHTML;
-            submitBtn.disabled = true;
-            submitBtn.innerHTML = '🔄 Envoi en cours...';
-            
-            try {
-                // Optimistic update : ajouter localement d'abord
-                const tempRequest = { ...requestData, id: 'temp_' + Date.now() };
-                APP_STATE.musicRequests.push(tempRequest);
-                updateUserQueuePosition();
-                
-                // Ensuite sauvegarder sur le serveur
-                const savedRequest = await NetlifyDataManager.saveRequest(requestData);
-                
-                if (savedRequest.success) {
-                    // Remplacer la demande temporaire par la vraie
-                    const tempIndex = APP_STATE.musicRequests.findIndex(r => r.id === tempRequest.id);
-                    if (tempIndex !== -1) {
-                        APP_STATE.musicRequests[tempIndex] = savedRequest.data;
-                    }
-                    
-                    // Réinitialiser le formulaire
-                    document.getElementById('songSearch').value = '';
-                    document.getElementById('songSearch').style.borderColor = '';
-                    APP_STATE.selectedSong = null;
-                    APP_STATE.lastRequestTime = now;
-                    
-                    NotificationManager.show(`🎵 "${songData.songTitle}" ajouté à la liste !`);
-                    updateUserQueuePosition();
-                    startCooldownTimer(CONFIG.ANTI_SPAM_COOLDOWN / 1000);
-                    
-                    // Focus sur le champ de recherche pour une nouvelle demande
-                    setTimeout(() => {
-                        document.getElementById('songSearch').focus();
-                    }, 1000);
-                    
-                } else {
-                    throw new Error(savedRequest.error || 'Erreur de sauvegarde');
-                }
-            } catch (error) {
-                // Supprimer la demande temporaire en cas d'erreur
-                APP_STATE.musicRequests = APP_STATE.musicRequests.filter(r => !r.id.startsWith('temp_'));
-                updateUserQueuePosition();
-                
-                console.error('Request error:', error);
-                
-                if (error.message.includes('429') || error.message.includes('attendre')) {
-                    NotificationManager.show('Trop de demandes, veuillez patienter', 'warning');
-                } else {
-                    NotificationManager.show('Erreur lors de l\'envoi. Vérifiez votre connexion.', 'error');
-                }
-            }
-            
-            submitBtn.disabled = false;
-            submitBtn.innerHTML = originalText;
-        }
-
-        function startCooldownTimer(seconds) {
-            const cooldownDiv = document.getElementById('cooldownIndicator');
-            const cooldownTime = document.getElementById('cooldownTime');
-            
-            cooldownDiv.classList.remove('hidden');
-            
-            if (APP_STATE.cooldownTimer) {
-                clearInterval(APP_STATE.cooldownTimer);
-            }
-            
-            let remaining = seconds;
-            cooldownTime.textContent = remaining;
-            
-            APP_STATE.cooldownTimer = setInterval(() => {
-                remaining--;
-                cooldownTime.textContent = remaining;
-                
-                if (remaining <= 0) {
-                    clearInterval(APP_STATE.cooldownTimer);
-                    cooldownDiv.classList.add('hidden');
-                }
-            }, 1000);
-        }
-
-        function updateUserQueuePosition() {
-            const queueDiv = document.getElementById('queuePosition');
-            const positionNumber = document.getElementById('positionNumber');
-            const queueInfo = document.getElementById('queueInfo');
-            
-            if (!APP_STATE.selectedEventId) {
-                queueDiv.classList.add('hidden');
-                return;
-            }
-            
-            const userRequests = APP_STATE.musicRequests.filter(
-                r => r.userId === APP_STATE.currentUserId && 
-                     r.eventId === APP_STATE.selectedEventId && 
-                     r.status === 'pending'
-            );
-            
-            if (userRequests.length === 0) {
-                queueDiv.classList.add('hidden');
-                return;
-            }
-            
-            const eventRequests = APP_STATE.musicRequests.filter(
-                r => r.eventId === APP_STATE.selectedEventId && 
-                     r.status === 'pending'
-            ).sort((a, b) => new Date(a.timestamp) - new Date(b.timestamp));
-            
-            const firstUserRequest = userRequests.sort((a, b) => new Date(a.timestamp) - new Date(b.timestamp))[0];
-            const position = eventRequests.findIndex(r => r.id === firstUserRequest.id) + 1;
-            
-            positionNumber.textContent = position;
-            queueInfo.textContent = `${userRequests.length} de vos demandes en attente`;
-            queueDiv.classList.remove('hidden');
-        }
+        // DJ-only: removed participant UI logic from index.html. Participant flow now lives in `public/participant.html`.
 
         function updateConnectionStatus() {
             const indicator = document.getElementById('realTimeIndicator');
@@ -2850,20 +2355,9 @@
                 return;
             }
             
-            // Event listeners (DJ-only). Guard optional forms that are not used anymore on index.html
+            // Event listeners (DJ-only)
             const eventFormEl = document.getElementById('eventForm');
             if (eventFormEl) eventFormEl.addEventListener('submit', handleEventForm);
-
-            const loginFormEl = document.getElementById('loginForm');
-            if (loginFormEl) loginFormEl.addEventListener('submit', handleLogin);
-
-            const musicRequestFormEl = document.getElementById('musicRequestForm');
-            if (musicRequestFormEl) musicRequestFormEl.addEventListener('submit', handleMusicRequest);
-            
-            // Démarrer la synchronisation si utilisateur
-            if (APP_STATE.currentInterface === 'userInterface') {
-                DataSyncManager.startAutoSync();
-            }
         }
 
         // Démarrer l'application
