@@ -1,4 +1,4 @@
-echo '[build]
+[build]
   publish = "public"
   functions = "netlify/functions"
 
@@ -10,3 +10,4 @@ echo '[build]
 [functions]
   external_node_modules = ["@netlify/neon"]
   node_bundler = "esbuild"' > netlify.toml
+
