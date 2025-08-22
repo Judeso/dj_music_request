@@ -1433,8 +1433,8 @@
             }
 
             static generateQRCodeURL(eventId, size = 200, format = 'png') {
-                const baseUrl = window.location.origin + window.location.pathname;
-                const eventUrl = `${baseUrl}?event=${eventId}`;
+                // Always route participants to the public participant page
+                const eventUrl = `${window.location.origin}/participant.html?event=${eventId}`;
                 
                 // Utiliser l'API QR Server (gratuite et fiable)
                 if (format === 'svg') {
@@ -1472,7 +1472,7 @@
                 if (!event) return;
 
                 const qrUrl = this.generateQRCodeURL(eventId, 400);
-                const eventUrl = `${window.location.origin}${window.location.pathname}?event=${eventId}`;
+                const eventUrl = `${window.location.origin}/participant.html?event=${eventId}`;
                 
                 const printWindow = window.open('', '_blank');
                 const htmlContent = `
@@ -2358,6 +2358,22 @@
         }
 
         // DJ-only: removed participant UI logic from index.html. Participant flow now lives in `public/participant.html`.
+
+        // Rediriger automatiquement les liens participants mal orientés vers index.html
+        // Exemple: anciens QR / liens pointant vers index.html?event=...
+        (function redirectParticipantIfNeeded(){
+            try {
+                const params = new URLSearchParams(window.location.search);
+                const hasEventParam = params.has('event') || params.has('eventId');
+                const isAdminLogged = sessionStorage.getItem('dj_admin_logged_in') === 'true';
+                if (hasEventParam && !isAdminLogged) {
+                    const qs = params.toString();
+                    window.location.replace(`/participant.html?${qs}`);
+                }
+            } catch (e) {
+                // no-op
+            }
+        })();
 
         function updateConnectionStatus() {
             const indicator = document.getElementById('realTimeIndicator');
