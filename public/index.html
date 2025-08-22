@@ -1421,9 +1421,12 @@
         // Gestionnaire de QR Codes et codes courts
         class QRCodeManager {
             static generateShortCode(eventName, eventType) {
-                // Créer un code court basé sur le nom et type d'événement
-                const namePrefix = eventName.substring(0, 2).toUpperCase().replace(/[^A-Z]/g, 'EV');
-                const typePrefix = eventType.substring(0, 2).toUpperCase().replace(/[^A-Z]/g, 'XX');
+                // Créer un code court basé sur le nom et type d'événement (robuste aux valeurs null/undefined)
+                const safeName = (typeof eventName === 'string' && eventName.trim().length > 0) ? eventName : 'EV';
+                const safeType = (typeof eventType === 'string' && eventType.trim().length > 0) ? eventType : 'XX';
+
+                const namePrefix = safeName.substring(0, 2).toUpperCase().replace(/[^A-Z]/g, 'EV');
+                const typePrefix = safeType.substring(0, 2).toUpperCase().replace(/[^A-Z]/g, 'XX');
                 const randomSuffix = Math.random().toString(36).substring(2, 6).toUpperCase();
                 
                 return `${namePrefix}${typePrefix}${randomSuffix}`;
