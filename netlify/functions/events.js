@@ -111,24 +111,36 @@ export default async (request, context) => {
       
       let updated;
       const updatedAtValue = body.updatedAt || new Date().toISOString();
-      try {
-        // Tentative 1: avec updated_at
-        const fieldsWithUpdated = [...baseFields, sql`updated_at = ${updatedAtValue}`];
+      
+      // Tentative simple: mettre à jour seulement le status si c'est le seul champ
+      if (baseFields.length === 1 && body.status) {
+        console.log('Simple status update for eventId:', eventId, 'to:', body.status);
         [updated] = await sql`
           UPDATE events
-          SET ${sql.join(fieldsWithUpdated, sql`, `)}
+          SET status = ${body.status}
           WHERE id = ${eventId}
           RETURNING *;
         `;
-      } catch (e) {
-        console.warn('PUT events: retrying without updated_at field due to error:', e?.message || e);
-        // Tentative 2: sans updated_at (pour schémas ne possédant pas cette colonne)
-        [updated] = await sql`
-          UPDATE events
-          SET ${sql.join(baseFields, sql`, `)}
-          WHERE id = ${eventId}
-          RETURNING *;
-        `;
+      } else {
+        try {
+          // Tentative 1: avec updated_at
+          const fieldsWithUpdated = [...baseFields, sql`updated_at = ${updatedAtValue}`];
+          [updated] = await sql`
+            UPDATE events
+            SET ${sql.join(fieldsWithUpdated, sql`, `)}
+            WHERE id = ${eventId}
+            RETURNING *;
+          `;
+        } catch (e) {
+          console.warn('PUT events: retrying without updated_at field due to error:', e?.message || e);
+          // Tentative 2: sans updated_at (pour schémas ne possédant pas cette colonne)
+          [updated] = await sql`
+            UPDATE events
+            SET ${sql.join(baseFields, sql`, `)}
+            WHERE id = ${eventId}
+            RETURNING *;
+          `;
+        }
       }
 
       if (!updated) {
