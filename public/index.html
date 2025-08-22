@@ -1881,10 +1881,8 @@
                     hasChanges = true;
                 }
             });
-            
-            if (hasChanges) {
-                DataManager.save();
-            }
+            // Optionnel: on pourrait persister ces changements via NetlifyDataManager au besoin.
+            // Laisser la synchro gérer la persistance pour éviter des appels multiples.
             
             grid.innerHTML = APP_STATE.events.map(event => {
                 const date = new Date(event.date);
