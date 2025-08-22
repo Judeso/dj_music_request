@@ -374,8 +374,9 @@
                     showSuccess('✅ Connexion réussie ! Redirection...');
                     
                     setTimeout(() => {
-                        showAdminPanel();
-                    }, 1000);
+                        // Rediriger vers l'interface principale DJ (index.html)
+                        window.location.href = 'index.html';
+                    }, 800);
                     
                 } else {
                     // Échec de connexion

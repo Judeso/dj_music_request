@@ -960,6 +960,7 @@
     </style>
 </head>
 <body>
+    <script src="auth-protection.js"></script>
     <!-- Header Global -->
     <header class="app-header" id="appHeader" style="display: none;">
         <div class="header-content">
@@ -1064,7 +1065,11 @@
                     <!-- Accès par code -->
                     <div id="accessByCode" class="access-panel">
                         <label class="form-label" for="eventCode">Entrez votre code événement :</label>
-                        <div style
+                        <div class="code-input-container">
+                            <input type="text" id="eventCode" class="code-input" placeholder="Ex: ABC123" maxlength="12">
+                            <div class="scan-icon">📷</div>
+                        </div>
+                        <button class="btn btn-primary btn-sm" onclick="accessEventByCode()">Valider le code</button>
 
                 <!-- Formulaire de demande -->
                 <form id="musicRequestForm" class="hidden">
@@ -2935,21 +2940,14 @@
 
         // Initialisation
         async function init() {
-            // Vérifier la session DJ
-            if (localStorage.getItem('djLoggedIn') === 'true') {
-                APP_STATE.currentUser = { id: 'dj_1', name: 'DJ Admin', role: 'dj' };
+            // Vérifier la session DJ (auth admin obligatoire pour accéder à index.html)
+            if (sessionStorage.getItem('dj_admin_logged_in') === 'true') {
+                APP_STATE.currentUser = { id: 'dj_1', name: sessionStorage.getItem('dj_admin_user') || 'DJ Admin', role: 'dj' };
                 InterfaceManager.showInterface('djDashboard');
                 DataSyncManager.startAutoSync();
             } else {
-                // Vérifier l'événement dans l'URL pour l'interface utilisateur
-                const urlParams = new URLSearchParams(window.location.search);
-                const eventId = urlParams.get('event');
-                
-                if (eventId) {
-                    InterfaceManager.showInterface('userInterface');
-                } else {
-                    InterfaceManager.showInterface('login');
-                }
+                window.location.href = 'admin-login.html';
+                return;
             }
             
             // Event listeners
