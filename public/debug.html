@@ -1,0 +1,703 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>🔧 Debug - Bouton Création Événement</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #e74c3c 0%, #c0392b 100%);
+            min-height: 100vh;
+            color: #333;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+
+        .header {
+            text-align: center;
+            color: white;
+            margin-bottom: 30px;
+        }
+
+        .debug-card {
+            background: white;
+            border-radius: 15px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+            overflow: hidden;
+            margin-bottom: 20px;
+        }
+
+        .card-header {
+            background: linear-gradient(45deg, #e74c3c, #c0392b);
+            color: white;
+            padding: 20px;
+            text-align: center;
+        }
+
+        .card-content {
+            padding: 30px;
+        }
+
+        .debug-tabs {
+            display: flex;
+            background: #f8f9fa;
+            border-radius: 10px;
+            margin-bottom: 20px;
+            overflow: hidden;
+        }
+
+        .tab {
+            flex: 1;
+            padding: 15px;
+            text-align: center;
+            cursor: pointer;
+            background: #e9ecef;
+            transition: all 0.3s ease;
+            border: none;
+            font-weight: 600;
+        }
+
+        .tab.active {
+            background: #e74c3c;
+            color: white;
+        }
+
+        .debug-content {
+            display: none;
+            padding: 20px;
+            border-radius: 10px;
+            background: #f8f9fa;
+        }
+
+        .debug-content.active {
+            display: block;
+        }
+
+        .step {
+            background: white;
+            border-left: 4px solid #e74c3c;
+            padding: 20px;
+            margin: 15px 0;
+            border-radius: 5px;
+        }
+
+        .step-title {
+            font-weight: bold;
+            color: #e74c3c;
+            margin-bottom: 10px;
+        }
+
+        .code-block {
+            background: #2d3748;
+            color: #e2e8f0;
+            padding: 15px;
+            border-radius: 8px;
+            font-family: 'Courier New', monospace;
+            margin: 10px 0;
+            overflow-x: auto;
+            font-size: 0.9rem;
+            position: relative;
+        }
+
+        .copy-btn {
+            position: absolute;
+            top: 10px;
+            right: 10px;
+            background: #4CAF50;
+            color: white;
+            border: none;
+            padding: 5px 10px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 0.8rem;
+        }
+
+        .test-button {
+            background: #28a745;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 5px;
+            cursor: pointer;
+            margin: 10px 5px;
+            font-size: 0.9rem;
+        }
+
+        .test-button:hover {
+            background: #218838;
+        }
+
+        .result-box {
+            background: #f8f9fa;
+            border: 1px solid #dee2e6;
+            border-radius: 8px;
+            padding: 15px;
+            margin: 10px 0;
+            min-height: 100px;
+            font-family: monospace;
+            font-size: 0.9rem;
+        }
+
+        .alert {
+            padding: 15px;
+            border-radius: 8px;
+            margin: 15px 0;
+        }
+
+        .alert-error {
+            background: #f8d7da;
+            border: 1px solid #f5c6cb;
+            color: #721c24;
+        }
+
+        .alert-success {
+            background: #d4edda;
+            border: 1px solid #c3e6cb;
+            color: #155724;
+        }
+
+        .alert-warning {
+            background: #fff3cd;
+            border: 1px solid #ffeaa7;
+            color: #856404;
+        }
+
+        .console-output {
+            background: #1a202c;
+            color: #e2e8f0;
+            padding: 15px;
+            border-radius: 8px;
+            font-family: monospace;
+            max-height: 200px;
+            overflow-y: auto;
+            margin: 10px 0;
+        }
+
+        .form-test {
+            background: white;
+            border: 1px solid #dee2e6;
+            border-radius: 10px;
+            padding: 20px;
+            margin: 15px 0;
+        }
+
+        .form-group {
+            margin-bottom: 15px;
+        }
+
+        .form-group label {
+            display: block;
+            margin-bottom: 5px;
+            font-weight: bold;
+        }
+
+        .form-group input, .form-group select, .form-group textarea {
+            width: 100%;
+            padding: 8px 12px;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+            font-size: 0.9rem;
+        }
+
+        .network-status {
+            display: inline-block;
+            width: 10px;
+            height: 10px;
+            border-radius: 50%;
+            margin-right: 8px;
+        }
+
+        .status-online { background: #28a745; }
+        .status-offline { background: #dc3545; }
+        .status-loading { background: #ffc107; animation: pulse 1s infinite; }
+
+        @keyframes pulse {
+            0% { opacity: 1; }
+            50% { opacity: 0.5; }
+            100% { opacity: 1; }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🔧 Debug Interface</h1>
+            <p>Diagnostic du bouton de création d'événement</p>
+        </div>
+
+        <div class="debug-card">
+            <div class="card-header">
+                <h2>🚨 Problème: Bouton ne fonctionne pas</h2>
+                <p>Diagnostic étape par étape</p>
+            </div>
+
+            <div class="card-content">
+                <div class="debug-tabs">
+                    <button class="tab active" onclick="showDebugSection('console')">🖥️ Console</button>
+                    <button class="tab" onclick="showDebugSection('network')">🌐 Réseau</button>
+                    <button class="tab" onclick="showDebugSection('form')">📝 Formulaire</button>
+                    <button class="tab" onclick="showDebugSection('api')">🔌 API Test</button>
+                    <button class="tab" onclick="showDebugSection('fix')">🔧 Solutions</button>
+                </div>
+
+                <!-- Section Console -->
+                <div id="console" class="debug-content active">
+                    <h3>🖥️ Vérification Console JavaScript</h3>
+                    
+                    <div class="step">
+                        <div class="step-title">Étape 1: Ouvrir la Console</div>
+                        <p>Appuyez sur <kbd>F12</kbd> ou clic droit → "Inspecter" → onglet "Console"</p>
+                    </div>
+
+                    <div class="step">
+                        <div class="step-title">Étape 2: Tester le JavaScript</div>
+                        <button class="test-button" onclick="testConsole()">🧪 Tester Console</button>
+                        <div class="console-output" id="consoleOutput">
+                            Appuyez sur "Tester Console" pour vérifier...
+                        </div>
+                    </div>
+
+                    <div class="step">
+                        <div class="step-title">Étape 3: Chercher les Erreurs</div>
+                        <p>Regardez dans la console du navigateur si vous voyez des erreurs en rouge :</p>
+                        <div class="code-block">
+❌ TypeError: Cannot read property 'addEventListener' of null
+❌ ReferenceError: createEvent is not defined  
+❌ Uncaught SyntaxError: Unexpected token
+❌ Failed to fetch API
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Section Network -->
+                <div id="network" class="debug-content">
+                    <h3>🌐 Test de Connectivité API</h3>
+                    
+                    <div class="step">
+                        <div class="step-title">Status API:</div>
+                        <div>
+                            <span class="network-status status-loading" id="apiStatus"></span>
+                            <span id="apiStatusText">Testing...</span>
+                        </div>
+                        <button class="test-button" onclick="testAPI()">🔄 Tester API</button>
+                    </div>
+
+                    <div class="step">
+                        <div class="step-title">Test des Endpoints:</div>
+                        <button class="test-button" onclick="testEndpoint('events')">GET /api/events</button>
+                        <button class="test-button" onclick="testEndpoint('events', 'POST')">POST /api/events</button>
+                        <div class="result-box" id="networkResults">
+                            Résultats des tests API s'afficheront ici...
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Section Formulaire -->
+                <div id="form" class="debug-content">
+                    <h3>📝 Test du Formulaire</h3>
+                    
+                    <div class="form-test">
+                        <h4>Formulaire de Test</h4>
+                        <div class="form-group">
+                            <label>Nom de l'événement:</label>
+                            <input type="text" id="testEventName" value="Test Debug Event">
+                        </div>
+                        <div class="form-group">
+                            <label>Type:</label>
+                            <select id="testEventType">
+                                <option value="concert">Concert</option>
+                                <option value="soiree">Soirée</option>
+                                <option value="festival">Festival</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label>Date:</label>
+                            <input type="datetime-local" id="testEventDate">
+                        </div>
+                        <div class="form-group">
+                            <label>Lieu:</label>
+                            <input type="text" id="testEventLocation" value="Test Location">
+                        </div>
+                        <div class="form-group">
+                            <label>Nombre d'invités:</label>
+                            <input type="number" id="testEventGuests" value="50">
+                        </div>
+                        
+                        <button class="test-button" onclick="testFormSubmission()">🧪 Tester Soumission</button>
+                        <div class="result-box" id="formResults">
+                            Résultat du test de formulaire...
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Section API Test -->
+                <div id="api" class="debug-content">
+                    <h3>🔌 Test API Direct</h3>
+                    
+                    <div class="step">
+                        <div class="step-title">Test Manuel API</div>
+                        <button class="test-button" onclick="createTestEvent()">📝 Créer Événement Test</button>
+                        <div class="result-box" id="apiTestResults">
+                            Résultats du test API...
+                        </div>
+                    </div>
+
+                    <div class="step">
+                        <div class="step-title">Code JavaScript pour Debug</div>
+                        <div class="code-block">
+                            <button class="copy-btn" onclick="copyCode(this)">📋</button>
+// Coller ce code dans la console du navigateur pour tester
+async function testCreateEvent() {
+    try {
+        const response = await fetch('/.netlify/functions/events', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+                name: 'Test Event Debug',
+                type: 'test',
+                date: new Date().toISOString(),
+                location: 'Debug Location',
+                expectedGuests: 10,
+                status: 'preparation'
+            })
+        });
+        
+        const result = await response.json();
+        console.log('API Response:', result);
+        return result;
+    } catch (error) {
+        console.error('API Error:', error);
+    }
+}
+
+testCreateEvent();
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Section Solutions -->
+                <div id="fix" class="debug-content">
+                    <h3>🔧 Solutions Possibles</h3>
+                    
+                    <div class="alert alert-warning">
+                        <strong>⚠️ Solutions selon le problème détecté:</strong>
+                    </div>
+
+                    <div class="step">
+                        <div class="step-title">🔗 Problème: Event Listener Manquant</div>
+                        <p>Si le bouton n'a pas d'événement attaché :</p>
+                        <div class="code-block">
+// Ajouter ceci dans votre script.js
+document.addEventListener('DOMContentLoaded', function() {
+    const createButton = document.getElementById('create-event-btn');
+    if (createButton) {
+        createButton.addEventListener('click', function(e) {
+            e.preventDefault();
+            console.log('Bouton cliqué!');
+            createEvent();
+        });
+    } else {
+        console.error('Bouton non trouvé!');
+    }
+});
+                        </div>
+                    </div>
+
+                    <div class="step">
+                        <div class="step-title">📡 Problème: URL API Incorrecte</div>
+                        <p>Vérifier que l'URL de l'API est correcte :</p>
+                        <div class="code-block">
+// URL correcte pour Netlify Functions
+const API_URL = '/.netlify/functions/events';
+
+// Pas d'URL absolue comme:
+// const API_URL = 'https://votresite.com/api/events'; ❌
+                        </div>
+                    </div>
+
+                    <div class="step">
+                        <div class="step-title">📝 Problème: Validation des Données</div>
+                        <div class="code-block">
+function validateEventData(eventData) {
+    if (!eventData.name || eventData.name.trim() === '') {
+        alert('Le nom de l\'événement est requis');
+        return false;
+    }
+    if (!eventData.date) {
+        alert('La date est requise');
+        return false;
+    }
+    return true;
+}
+                        </div>
+                    </div>
+
+                    <div class="step">
+                        <div class="step-title">🚀 Code Complet Fonctionnel</div>
+                        <div class="code-block">
+                            <button class="copy-btn" onclick="copyCode(this)">📋</button>
+async function createEvent() {
+    try {
+        // Récupérer les données du formulaire
+        const eventData = {
+            name: document.getElementById('event-name').value,
+            type: document.getElementById('event-type').value,
+            date: document.getElementById('event-date').value,
+            location: document.getElementById('event-location').value,
+            expectedGuests: parseInt(document.getElementById('event-guests').value),
+            status: 'preparation'
+        };
+
+        // Valider les données
+        if (!eventData.name || !eventData.date || !eventData.location) {
+            alert('Veuillez remplir tous les champs requis');
+            return;
+        }
+
+        // Afficher loading
+        const button = document.getElementById('create-event-btn');
+        button.disabled = true;
+        button.textContent = 'Création...';
+
+        // Envoyer à l'API
+        const response = await fetch('/.netlify/functions/events', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify(eventData)
+        });
+
+        const result = await response.json();
+
+        if (result.success) {
+            alert('Événement créé avec succès!');
+            location.reload(); // Recharger la page
+        } else {
+            alert('Erreur: ' + result.error);
+        }
+
+    } catch (error) {
+        console.error('Erreur:', error);
+        alert('Erreur de connexion');
+    } finally {
+        // Remettre le bouton en état
+        const button = document.getElementById('create-event-btn');
+        button.disabled = false;
+        button.textContent = 'Créer Événement';
+    }
+}
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Set default date to tomorrow
+        document.addEventListener('DOMContentLoaded', function() {
+            const tomorrow = new Date();
+            tomorrow.setDate(tomorrow.getDate() + 1);
+            const dateInput = document.getElementById('testEventDate');
+            if (dateInput) {
+                dateInput.value = tomorrow.toISOString().slice(0, 16);
+            }
+        });
+
+        function showDebugSection(sectionName) {
+            // Hide all sections
+            const contents = document.querySelectorAll('.debug-content');
+            contents.forEach(content => content.classList.remove('active'));
+            
+            // Remove active from all tabs
+            const tabs = document.querySelectorAll('.tab');
+            tabs.forEach(tab => tab.classList.remove('active'));
+            
+            // Show selected section
+            document.getElementById(sectionName).classList.add('active');
+            event.target.classList.add('active');
+        }
+
+        function testConsole() {
+            const output = document.getElementById('consoleOutput');
+            output.innerHTML = '';
+            
+            // Test basic JavaScript
+            try {
+                output.innerHTML += '✅ JavaScript fonctionne\n';
+                output.innerHTML += '✅ Date: ' + new Date().toLocaleString() + '\n';
+                output.innerHTML += '✅ Fetch API: ' + (typeof fetch !== 'undefined' ? 'Disponible' : 'Non disponible') + '\n';
+                
+                // Test DOM
+                const buttons = document.querySelectorAll('button');
+                output.innerHTML += '✅ Boutons trouvés: ' + buttons.length + '\n';
+                
+                console.log('✅ Test console réussi');
+                output.innerHTML += '✅ Console.log fonctionne\n';
+                
+            } catch (error) {
+                output.innerHTML += '❌ Erreur: ' + error.message + '\n';
+                console.error('Erreur test console:', error);
+            }
+        }
+
+        async function testAPI() {
+            const statusEl = document.getElementById('apiStatus');
+            const statusTextEl = document.getElementById('apiStatusText');
+            
+            statusEl.className = 'network-status status-loading';
+            statusTextEl.textContent = 'Testing...';
+            
+            try {
+                const response = await fetch('/.netlify/functions/events');
+                const data = await response.json();
+                
+                if (response.ok) {
+                    statusEl.className = 'network-status status-online';
+                    statusTextEl.textContent = `✅ API Online (${data.data?.length || 0} événements)`;
+                } else {
+                    statusEl.className = 'network-status status-offline';
+                    statusTextEl.textContent = `❌ API Error: ${response.status}`;
+                }
+            } catch (error) {
+                statusEl.className = 'network-status status-offline';
+                statusTextEl.textContent = `❌ Connexion impossible: ${error.message}`;
+            }
+        }
+
+        async function testEndpoint(endpoint, method = 'GET') {
+            const resultsEl = document.getElementById('networkResults');
+            resultsEl.innerHTML = `🔄 Testing ${method} /.netlify/functions/${endpoint}...\n`;
+            
+            try {
+                const options = {
+                    method: method,
+                    headers: {
+                        'Content-Type': 'application/json'
+                    }
+                };
+
+                if (method === 'POST') {
+                    options.body = JSON.stringify({
+                        name: 'Test Event API',
+                        type: 'test',
+                        date: new Date().toISOString(),
+                        location: 'Test Location',
+                        expectedGuests: 10,
+                        status: 'preparation'
+                    });
+                }
+
+                const response = await fetch(`/.netlify/functions/${endpoint}`, options);
+                const data = await response.json();
+                
+                resultsEl.innerHTML += `\n✅ Status: ${response.status}\n`;
+                resultsEl.innerHTML += `📦 Response: ${JSON.stringify(data, null, 2)}\n`;
+                
+            } catch (error) {
+                resultsEl.innerHTML += `\n❌ Error: ${error.message}\n`;
+            }
+        }
+
+        async function testFormSubmission() {
+            const resultsEl = document.getElementById('formResults');
+            resultsEl.innerHTML = '🔄 Testing form submission...\n';
+            
+            try {
+                const formData = {
+                    name: document.getElementById('testEventName').value,
+                    type: document.getElementById('testEventType').value,
+                    date: document.getElementById('testEventDate').value,
+                    location: document.getElementById('testEventLocation').value,
+                    expectedGuests: parseInt(document.getElementById('testEventGuests').value),
+                    status: 'preparation'
+                };
+
+                resultsEl.innerHTML += `📝 Form Data: ${JSON.stringify(formData, null, 2)}\n`;
+
+                // Validate
+                if (!formData.name || !formData.date || !formData.location) {
+                    resultsEl.innerHTML += '❌ Validation Error: Missing required fields\n';
+                    return;
+                }
+
+                resultsEl.innerHTML += '✅ Validation passed\n';
+                resultsEl.innerHTML += '🚀 Ready to submit to API\n';
+
+            } catch (error) {
+                resultsEl.innerHTML += `❌ Form Error: ${error.message}\n`;
+            }
+        }
+
+        async function createTestEvent() {
+            const resultsEl = document.getElementById('apiTestResults');
+            resultsEl.innerHTML = '🔄 Creating test event...\n';
+            
+            try {
+                const eventData = {
+                    name: 'Debug Test Event',
+                    type: 'test',
+                    date: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString(), // Tomorrow
+                    location: 'Debug Location',
+                    expectedGuests: 25,
+                    status: 'preparation',
+                    description: 'Event created for debugging purposes'
+                };
+
+                const response = await fetch('/.netlify/functions/events', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify(eventData)
+                });
+
+                const result = await response.json();
+                
+                resultsEl.innerHTML += `Status: ${response.status}\n`;
+                resultsEl.innerHTML += `Response: ${JSON.stringify(result, null, 2)}\n`;
+
+                if (result.success) {
+                    resultsEl.innerHTML += '\n✅ ✅ ✅ ÉVÉNEMENT CRÉÉ AVEC SUCCÈS! ✅ ✅ ✅\n';
+                } else {
+                    resultsEl.innerHTML += `\n❌ Échec: ${result.error}\n`;
+                }
+
+            } catch (error) {
+                resultsEl.innerHTML += `❌ Error: ${error.message}\n`;
+            }
+        }
+
+        function copyCode(button) {
+            const codeBlock = button.parentElement;
+            const code = codeBlock.textContent.replace('📋', '').trim();
+            
+            navigator.clipboard.writeText(code).then(() => {
+                button.textContent = '✅';
+                setTimeout(() => {
+                    button.textContent = '📋';
+                }, 2000);
+            });
+        }
+
+        // Auto-test API on page load
+        setTimeout(() => {
+            testAPI();
+        }, 1000);
+    </script>
+</body>
+</html>
