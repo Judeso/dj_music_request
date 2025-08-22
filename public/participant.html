@@ -237,7 +237,7 @@
             if (!eventId) return;
             
             try {
-                const response = await fetch(`/api/events`);
+                const response = await fetch(`/.netlify/functions/events`);
                 const data = await response.json();
                 
                 if (data.success) {
@@ -285,7 +285,7 @@
                     userId: generateUserId()
                 };
                 
-                const response = await fetch('/api/requests', {
+                const response = await fetch('/.netlify/functions/requests', {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json',
