@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>🔐 Connexion Admin - DJ Music Request</title>
+    <title>🔐 Connexion DJ - Music Request Admin</title>
     <style>
         * {
             margin: 0;
@@ -476,17 +476,12 @@
             }
             
             // Redirection vers la page demandée
-            if (page === 'events.html') {
-                window.location.href = '/admin/events.html';
-            } else if (page === 'requests.html') {
-                window.location.href = '/admin/requests.html';
-            } else if (page === 'analytics.html') {
-                window.location.href = '/admin/analytics.html';
-            } else if (page === 'settings.html') {
-                window.location.href = '/admin/settings.html';
+            if (page === 'events.html' || page === 'requests.html' || page === 'analytics.html' || page === 'settings.html') {
+                // Rediriger vers l'interface principale d'admin (index.html)
+                window.location.href = 'index.html';
             } else {
                 // Page principale d'admin
-                window.location.href = '/admin/';
+                window.location.href = 'index.html';
             }
         }
 

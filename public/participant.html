@@ -1,0 +1,328 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>🎵 Demande de Musique</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+            color: #333;
+        }
+
+        .container {
+            max-width: 500px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 20px;
+            box-shadow: 0 25px 50px rgba(0, 0, 0, 0.25);
+            overflow: hidden;
+        }
+
+        .header {
+            background: linear-gradient(45deg, #667eea, #764ba2);
+            color: white;
+            padding: 30px 20px;
+            text-align: center;
+        }
+
+        .header h1 {
+            font-size: 2rem;
+            margin-bottom: 10px;
+        }
+
+        .header p {
+            opacity: 0.9;
+            font-size: 1rem;
+        }
+
+        .event-info {
+            background: rgba(255, 255, 255, 0.1);
+            margin: 20px 0;
+            padding: 15px;
+            border-radius: 10px;
+            text-align: center;
+        }
+
+        .event-name {
+            font-size: 1.2rem;
+            font-weight: 600;
+            margin-bottom: 5px;
+        }
+
+        .event-date {
+            opacity: 0.8;
+        }
+
+        .form-container {
+            padding: 30px;
+        }
+
+        .form-group {
+            margin-bottom: 20px;
+        }
+
+        .form-group label {
+            display: block;
+            margin-bottom: 8px;
+            font-weight: 600;
+            color: #333;
+        }
+
+        .form-group input {
+            width: 100%;
+            padding: 15px;
+            border: 2px solid #e9ecef;
+            border-radius: 10px;
+            font-size: 1rem;
+            transition: all 0.3s ease;
+        }
+
+        .form-group input:focus {
+            outline: none;
+            border-color: #667eea;
+            box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+        }
+
+        .submit-btn {
+            width: 100%;
+            background: linear-gradient(45deg, #667eea, #764ba2);
+            color: white;
+            border: none;
+            padding: 18px;
+            border-radius: 10px;
+            font-size: 1.1rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            margin-top: 10px;
+        }
+
+        .submit-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 25px rgba(102, 126, 234, 0.3);
+        }
+
+        .submit-btn:disabled {
+            background: #6c757d;
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        .success-message {
+            background: #d4edda;
+            color: #155724;
+            padding: 15px;
+            border-radius: 10px;
+            margin-top: 20px;
+            text-align: center;
+            display: none;
+        }
+
+        .error-message {
+            background: #f8d7da;
+            color: #721c24;
+            padding: 15px;
+            border-radius: 10px;
+            margin-top: 20px;
+            text-align: center;
+            display: none;
+        }
+
+        .loading {
+            display: inline-block;
+            width: 20px;
+            height: 20px;
+            border: 3px solid rgba(255,255,255,.3);
+            border-radius: 50%;
+            border-top-color: #fff;
+            animation: spin 1s ease-in-out infinite;
+        }
+
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+
+        .footer {
+            text-align: center;
+            padding: 20px;
+            color: #666;
+            font-size: 0.9rem;
+        }
+
+        @media (max-width: 600px) {
+            .container {
+                margin: 10px;
+                border-radius: 15px;
+            }
+            
+            .header h1 {
+                font-size: 1.5rem;
+            }
+            
+            .form-container {
+                padding: 20px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🎵 Demande de Musique</h1>
+            <p>Suggérez votre chanson préférée au DJ</p>
+            
+            <div class="event-info" id="eventInfo" style="display: none;">
+                <div class="event-name" id="eventName"></div>
+                <div class="event-date" id="eventDate"></div>
+            </div>
+        </div>
+
+        <div class="form-container">
+            <form id="requestForm">
+                <div class="form-group">
+                    <label for="songTitle">🎤 Titre de la chanson *</label>
+                    <input type="text" id="songTitle" name="songTitle" required 
+                           placeholder="Ex: Bohemian Rhapsody">
+                </div>
+
+                <div class="form-group">
+                    <label for="artist">🎸 Artiste *</label>
+                    <input type="text" id="artist" name="artist" required 
+                           placeholder="Ex: Queen">
+                </div>
+
+                <div class="form-group">
+                    <label for="userName">👤 Votre prénom *</label>
+                    <input type="text" id="userName" name="userName" required 
+                           placeholder="Ex: Marie">
+                </div>
+
+                <button type="submit" class="submit-btn" id="submitBtn">
+                    Envoyer ma demande 🚀
+                </button>
+            </form>
+
+            <div class="success-message" id="successMessage">
+                ✅ Votre demande a été envoyée avec succès !<br>
+                Le DJ la recevra dans quelques instants.
+            </div>
+
+            <div class="error-message" id="errorMessage">
+                ❌ Une erreur est survenue. Veuillez réessayer.
+            </div>
+        </div>
+
+        <div class="footer">
+            Scannez le QR code pour accéder à cette page
+        </div>
+    </div>
+
+    <script>
+        // Récupérer l'ID de l'événement depuis l'URL (QR code)
+        const urlParams = new URLSearchParams(window.location.search);
+        const eventId = urlParams.get('event') || urlParams.get('eventId');
+
+        // Charger les informations de l'événement
+        async function loadEventInfo() {
+            if (!eventId) return;
+            
+            try {
+                const response = await fetch(`/api/events`);
+                const data = await response.json();
+                
+                if (data.success) {
+                    const event = data.data.find(e => e.id === eventId);
+                    if (event) {
+                        document.getElementById('eventName').textContent = event.name;
+                        document.getElementById('eventDate').textContent = 
+                            new Date(event.date).toLocaleDateString('fr-FR', {
+                                weekday: 'long',
+                                year: 'numeric',
+                                month: 'long',
+                                day: 'numeric'
+                            });
+                        document.getElementById('eventInfo').style.display = 'block';
+                    }
+                }
+            } catch (error) {
+                console.error('Erreur lors du chargement de l\'événement:', error);
+            }
+        }
+
+        // Gérer la soumission du formulaire
+        document.getElementById('requestForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            
+            const submitBtn = document.getElementById('submitBtn');
+            const successMessage = document.getElementById('successMessage');
+            const errorMessage = document.getElementById('errorMessage');
+            
+            // Reset messages
+            successMessage.style.display = 'none';
+            errorMessage.style.display = 'none';
+            
+            // Loading state
+            submitBtn.disabled = true;
+            submitBtn.innerHTML = '<span class="loading"></span> Envoi en cours...';
+            
+            try {
+                const formData = new FormData(e.target);
+                const requestData = {
+                    eventId: eventId,
+                    songTitle: formData.get('songTitle'),
+                    artist: formData.get('artist'),
+                    userName: formData.get('userName'),
+                    userId: generateUserId()
+                };
+                
+                const response = await fetch('/api/requests', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify(requestData)
+                });
+                
+                const result = await response.json();
+                
+                if (result.success) {
+                    successMessage.style.display = 'block';
+                    e.target.reset();
+                    
+                    // Scroll vers le message de succès
+                    successMessage.scrollIntoView({ behavior: 'smooth' });
+                } else {
+                    throw new Error(result.error || 'Erreur inconnue');
+                }
+                
+            } catch (error) {
+                console.error('Erreur:', error);
+                errorMessage.textContent = `❌ ${error.message}`;
+                errorMessage.style.display = 'block';
+            } finally {
+                // Reset button
+                submitBtn.disabled = false;
+                submitBtn.innerHTML = 'Envoyer ma demande 🚀';
+            }
+        });
+
+        // Générer un ID utilisateur unique (simple)
+        function generateUserId() {
+            return 'user_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9);
+        }
+
+        // Charger les infos de l'événement au démarrage
+        loadEventInfo();
+    </script>
+</body>
+</html>
