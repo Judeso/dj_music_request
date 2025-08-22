@@ -15,6 +15,19 @@ export default async (request, context) => {
   }
 
   try {
+    // Helper: map DB row (snake_case) to API response (camelCase)
+    const toCamel = (row) => row && ({
+      id: row.id,
+      eventId: row.event_id,
+      songTitle: row.song_title,
+      artist: row.artist,
+      userName: row.user_name,
+      userId: row.user_id,
+      status: row.status,
+      timestamp: row.timestamp,
+      playedAt: row.played_at
+    });
+
     if (request.method === "GET") {
       const url = new URL(request.url);
       const eventId = url.searchParams.get('eventId');
@@ -27,7 +40,7 @@ export default async (request, context) => {
       }
       
       const rows = await query;
-      return new Response(JSON.stringify({ success: true, data: rows }), { 
+      return new Response(JSON.stringify({ success: true, data: rows.map(toCamel) }), { 
         status: 200, 
         headers 
       });
@@ -64,7 +77,7 @@ export default async (request, context) => {
         )
         RETURNING *;
       `;
-      return new Response(JSON.stringify({ success: true, data: newRequest }), { 
+      return new Response(JSON.stringify({ success: true, data: toCamel(newRequest) }), { 
         status: 201, 
         headers 
       });
@@ -82,14 +95,20 @@ export default async (request, context) => {
         }), { status: 400, headers });
       }
 
+      // Support updating status and optionally played_at
+      const statusVal = (body.status ?? null);
+      const playedAtVal = (body.playedAt ?? null);
+
       const [updatedRequest] = await sql`
         UPDATE requests 
-        SET status = ${body.status || 'pending'}
+        SET 
+          status = COALESCE(${statusVal}, status),
+          played_at = COALESCE(${playedAtVal}, played_at)
         WHERE id = ${requestId}
         RETURNING *;
       `;
       
-      return new Response(JSON.stringify({ success: true, data: updatedRequest }), { 
+      return new Response(JSON.stringify({ success: true, data: toCamel(updatedRequest) }), { 
         status: 200, 
         headers 
       });

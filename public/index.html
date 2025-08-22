@@ -1192,13 +1192,46 @@
 
             static updateLocalCache(endpoint, data) {
                 const storage = JSON.parse(localStorage.getItem('djEventData') || '{"events":[],"requests":[],"lastSync":0}');
-                
+                const incoming = Array.isArray(data) ? data : [];
+
                 if (endpoint === 'events') {
-                    storage.events = data;
+                    const existing = Array.isArray(storage.events) ? storage.events : [];
+                    const byId = new Map();
+                    // Start with existing, so we can preserve pending flags
+                    for (const e of existing) {
+                        byId.set(e.id, { ...e });
+                    }
+                    // Merge incoming on top, but preserve needsSync=true if previously set
+                    for (const inc of incoming) {
+                        const prev = byId.get(inc.id);
+                        if (prev) {
+                            const merged = { ...prev, ...inc };
+                            if (prev.needsSync) merged.needsSync = true;
+                            byId.set(inc.id, merged);
+                        } else {
+                            byId.set(inc.id, { ...inc });
+                        }
+                    }
+                    storage.events = Array.from(byId.values());
                 } else if (endpoint === 'requests') {
-                    storage.requests = data;
+                    const existing = Array.isArray(storage.requests) ? storage.requests : [];
+                    const byId = new Map();
+                    for (const r of existing) {
+                        byId.set(r.id, { ...r });
+                    }
+                    for (const inc of incoming) {
+                        const prev = byId.get(inc.id);
+                        if (prev) {
+                            const merged = { ...prev, ...inc };
+                            if (prev.needsSync) merged.needsSync = true;
+                            byId.set(inc.id, merged);
+                        } else {
+                            byId.set(inc.id, { ...inc });
+                        }
+                    }
+                    storage.requests = Array.from(byId.values());
                 }
-                
+
                 storage.lastSync = Date.now();
                 localStorage.setItem('djEventData', JSON.stringify(storage));
             }
@@ -1634,15 +1667,15 @@
                         <div class="qr-container">
                             <div class="event-title">${event.name}</div>
                             <div class="event-details">
-                                📅 ${new Date(event.date).toLocaleDateString('fr-FR')}<br>
-                                📍 ${event.location}
+                                ${new Date(event.date).toLocaleDateString('fr-FR')}<br>
+                                ${event.location}
                             </div>
                             <div class="short-code">
                                 Code: ${event.shortCode || 'N/A'}
                             </div>
                             <img src="${qrUrl}" alt="QR Code" class="qr-img">
                             <div class="instructions">
-                                <strong>🎵 Demandes musicales</strong><br>
+                                <strong> Demandes musicales</strong><br>
                                 Scannez ce QR Code avec votre téléphone<br>
                                 ou utilisez le code ci-dessus
                             </div>
@@ -1811,9 +1844,29 @@
                         NetlifyDataManager.getRequests()
                     ]);
 
-                    // Mettre à jour l'état global
-                    APP_STATE.events = events || [];
-                    APP_STATE.musicRequests = requests || [];
+                    // Conserver les éléments locaux en attente (needsSync) pour éviter leur disparition
+                    try {
+                        const storage = JSON.parse(localStorage.getItem('djEventData') || '{"events":[],"requests":[]}');
+                        const pendingLocalEvents = (storage.events || []).filter(e => e.needsSync);
+                        const pendingLocalRequests = (storage.requests || []).filter(r => r.needsSync);
+
+                        const serverEvents = Array.isArray(events) ? events : [];
+                        const serverRequests = Array.isArray(requests) ? requests : [];
+
+                        // Fusion par id (les IDs locaux commencent par 'local_')
+                        const serverEventIds = new Set(serverEvents.map(e => e.id));
+                        const serverRequestIds = new Set(serverRequests.map(r => r.id));
+
+                        const mergedEvents = serverEvents.concat(pendingLocalEvents.filter(e => !serverEventIds.has(e.id)));
+                        const mergedRequests = serverRequests.concat(pendingLocalRequests.filter(r => !serverRequestIds.has(r.id)));
+
+                        APP_STATE.events = mergedEvents;
+                        APP_STATE.musicRequests = mergedRequests;
+                    } catch (_) {
+                        APP_STATE.events = events || [];
+                        APP_STATE.musicRequests = requests || [];
+                    }
+
                     APP_STATE.lastSyncTime = now;
 
                     console.log('Data synchronized:', {
