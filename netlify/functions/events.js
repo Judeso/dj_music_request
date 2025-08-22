@@ -120,6 +120,10 @@ export default async (request, context) => {
         RETURNING *;
       `;
 
+      if (!updated) {
+        return new Response(JSON.stringify({ success: false, error: "Événement introuvable pour mise à jour" }), { status: 404, headers });
+      }
+
       const mapped = {
         id: updated.id,
         name: updated.name,

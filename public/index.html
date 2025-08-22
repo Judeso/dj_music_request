@@ -2149,6 +2149,8 @@
                     
                     // Mettre à jour l'interface immédiatement sans resync pour éviter d'écraser l'état local
                     updateDJDashboard(true);
+                    // Persister aussi dans le cache local pour le fallback si des appels API échouent ensuite
+                    try { NetlifyDataManager.updateLocalCache('events', APP_STATE.events); } catch(_) {}
                     
                     // Ensuite synchroniser avec le serveur
                     try {
