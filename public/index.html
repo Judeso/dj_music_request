@@ -1565,7 +1565,7 @@
                 const eventUrl = `${window.location.origin}${window.location.pathname}?event=${eventId}`;
                 
                 const printWindow = window.open('', '_blank');
-                printWindow.document.write(`
+                const htmlContent = `
                     <!DOCTYPE html>
                     <html>
                     <head>
@@ -1643,7 +1643,8 @@
                         </div>
                     </body>
                     </html>
-                `);
+                `;
+                printWindow.document.write(htmlContent);
                 printWindow.document.close();
                 printWindow.print();
             }
@@ -2623,16 +2624,20 @@
                     return;
                 }
                 
-                let resultsHTML = results.map(song => `
-                    <div class="search-result" onclick="selectSong('${JSON.stringify(song).replace(/'/g, "\\'")}')">
+                let resultsHTML = results.map(song => {
+                    const songData = JSON.stringify(song).replace(/'/g, "\\'").replace(/"/g, "&quot;");
+                    return `
+                    <div class="search-result" onclick="selectSong('${songData}')">
                         <div class="result-title">${song.title}</div>
                         <div class="result-artist">par ${song.artist}</div>
                     </div>
-                `).join('');
+                    `;
+                }).join('');
                 
                 // Toujours ajouter l'option de saisie libre en bas
+                const escapedQuery = originalQuery.replace(/'/g, "\\'").replace(/"/g, "&quot;");
                 resultsHTML += `
-                    <div class="search-result" onclick="selectFreeText('${originalQuery.replace(/'/g, "\\'")}')" 
+                    <div class="search-result" onclick="selectFreeText('${escapedQuery}')" 
                          style="background: #f0f9ff; border-top: 1px solid #e2e8f0;">
                         <div class="result-title">✏️ "${originalQuery}"</div>
                         <div class="result-artist">Utiliser ce titre tel quel</div>
