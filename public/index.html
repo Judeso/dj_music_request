@@ -1240,6 +1240,33 @@
                             localStorage.setItem('djEventData', JSON.stringify(storage));
                             return { success: true, data: data };
                         }
+                        if (method === 'PUT' || method === 'DELETE') {
+                            try {
+                                // support either 'requests/<id>' or 'requests?id=<id>'
+                                let requestId = null;
+                                if (endpoint.includes('/')) {
+                                    const parts = endpoint.split('/');
+                                    requestId = parts[1] || null;
+                                }
+                                if (!requestId && endpoint.includes('?')) {
+                                    const qs = endpoint.split('?')[1];
+                                    const params = new URLSearchParams(qs);
+                                    requestId = params.get('id');
+                                }
+                                if (!requestId) break;
+                                const idx = storage.requests.findIndex(r => r.id === requestId);
+                                if (idx === -1) break;
+                                if (method === 'PUT') {
+                                    storage.requests[idx] = { ...storage.requests[idx], ...data, needsSync: true };
+                                    localStorage.setItem('djEventData', JSON.stringify(storage));
+                                    return { success: true, data: storage.requests[idx] };
+                                } else {
+                                    storage.requests.splice(idx, 1);
+                                    localStorage.setItem('djEventData', JSON.stringify(storage));
+                                    return { success: true, data: { id: requestId } };
+                                }
+                            } catch (_) { /* ignore */ }
+                        }
                         break;
                 }
                 return { success: false, error: 'Local fallback failed' };
@@ -1256,6 +1283,15 @@
 
             static async saveRequest(request) {
                 return await this.apiCall('requests', 'POST', request);
+            }
+
+            static async updateRequest(requestId, updates) {
+                // Backend reads id from query param
+                return await this.apiCall(`requests?id=${encodeURIComponent(requestId)}`, 'PUT', updates);
+            }
+
+            static async deleteRequest(requestId) {
+                return await this.apiCall(`requests?id=${encodeURIComponent(requestId)}`, 'DELETE');
             }
 
             static async getRequests() {
@@ -2348,17 +2384,30 @@
 
         async function playRequest(requestId) {
             try {
-                const requestIndex = APP_STATE.musicRequests.findIndex(r => r.id === requestId);
-                if (requestIndex !== -1) {
-                    APP_STATE.musicRequests[requestIndex].status = 'played';
-                    APP_STATE.musicRequests[requestIndex].playedAt = new Date().toISOString();
-                    
-                    const request = APP_STATE.musicRequests[requestIndex];
-                    NotificationManager.show(`"${request.songTitle}" de ${request.artist} est maintenant en cours !`);
-                    
-                    closeManageEventModal();
-                    updateDJDashboard();
+                const nowIso = new Date().toISOString();
+                const result = await NetlifyDataManager.updateRequest(requestId, { status: 'played', playedAt: nowIso });
+                if (result && result.success) {
+                    const updated = result.data;
+                    const idx = APP_STATE.musicRequests.findIndex(r => r.id === requestId);
+                    if (idx !== -1) {
+                        APP_STATE.musicRequests[idx] = { ...APP_STATE.musicRequests[idx], ...updated };
+                    }
+                } else {
+                    // Fallback to local state update if needed
+                    const idx = APP_STATE.musicRequests.findIndex(r => r.id === requestId);
+                    if (idx !== -1) {
+                        APP_STATE.musicRequests[idx].status = 'played';
+                        APP_STATE.musicRequests[idx].playedAt = nowIso;
+                    }
                 }
+                const req = APP_STATE.musicRequests.find(r => r.id === requestId);
+                if (req) {
+                    NotificationManager.show(`"${req.songTitle}" de ${req.artist} est maintenant en cours !`);
+                } else {
+                    NotificationManager.show('Demande marquée comme jouée');
+                }
+                closeManageEventModal();
+                updateDJDashboard();
             } catch (error) {
                 NotificationManager.show('Erreur lors de la lecture', 'error');
             }
@@ -2366,9 +2415,14 @@
 
         async function deleteRequest(requestId) {
             try {
-                APP_STATE.musicRequests = APP_STATE.musicRequests.filter(r => r.id !== requestId);
+                const result = await NetlifyDataManager.deleteRequest(requestId);
+                if (result && result.success) {
+                    APP_STATE.musicRequests = APP_STATE.musicRequests.filter(r => r.id !== requestId);
+                } else {
+                    // Fallback local removal
+                    APP_STATE.musicRequests = APP_STATE.musicRequests.filter(r => r.id !== requestId);
+                }
                 NotificationManager.show('Demande supprimée');
-                
                 closeManageEventModal();
                 updateDJDashboard();
             } catch (error) {

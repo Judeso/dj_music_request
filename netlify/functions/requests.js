@@ -5,7 +5,7 @@ const headers = {
   'Content-Type': 'application/json',
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Headers': 'Content-Type',
-  'Access-Control-Allow-Methods': 'GET, POST, PUT, OPTIONS'
+  'Access-Control-Allow-Methods': 'GET, POST, PUT, DELETE, OPTIONS'
 };
 
 export default async (request, context) => {
@@ -93,6 +93,21 @@ export default async (request, context) => {
         status: 200, 
         headers 
       });
+    }
+
+    if (request.method === "DELETE") {
+      const url = new URL(request.url);
+      const requestId = url.searchParams.get('id');
+
+      if (!requestId) {
+        return new Response(JSON.stringify({
+          success: false,
+          error: 'ID de requête manquant'
+        }), { status: 400, headers });
+      }
+
+      await sql`DELETE FROM requests WHERE id = ${requestId}`;
+      return new Response(JSON.stringify({ success: true }), { status: 200, headers });
     }
 
     return new Response(JSON.stringify({ 
