@@ -1325,27 +1325,54 @@
             // Synchroniser les données locales non synchronisées quand on revient en ligne
             static async syncPendingData() {
                 const storage = JSON.parse(localStorage.getItem('djEventData') || '{"events":[],"requests":[]}');
-                
+
+                const idMap = new Map(); // localId -> serverId
+
                 // Synchroniser les événements en attente
-                for (const event of storage.events.filter(e => e.needsSync)) {
+                for (const ev of [...storage.events]) {
+                    if (!ev.needsSync) continue;
                     try {
-                        await this.saveEvent(event);
-                        event.needsSync = false;
+                        const res = await this.saveEvent(ev);
+                        if (res && res.success && res.data) {
+                            const serverEvent = res.data;
+                            // Mémoriser le mapping d'ID si l'ID a changé
+                            if (ev.id !== serverEvent.id) {
+                                idMap.set(ev.id, serverEvent.id);
+                            }
+
+                            // Remplacer l'événement local par la version serveur (ID correct)
+                            const idx = storage.events.findIndex(e => e.id === ev.id);
+                            if (idx !== -1) {
+                                storage.events.splice(idx, 1, { ...serverEvent, needsSync: false });
+                            }
+                        }
                     } catch (error) {
                         console.error('Failed to sync event:', error);
                     }
                 }
-                
+
+                // Remapper les demandes locales qui pointent vers d'anciens IDs d'événements
+                if (idMap.size > 0) {
+                    for (const req of storage.requests) {
+                        if (req.eventId && idMap.has(req.eventId)) {
+                            req.eventId = idMap.get(req.eventId);
+                            req.needsSync = req.needsSync || true; // marquer pour sync si pas déjà
+                        }
+                    }
+                }
+
                 // Synchroniser les demandes en attente
                 for (const request of storage.requests.filter(r => r.needsSync)) {
                     try {
-                        await this.saveRequest(request);
-                        request.needsSync = false;
+                        const res = await this.saveRequest(request);
+                        if (res && res.success && res.data) {
+                            request.needsSync = false;
+                        }
                     } catch (error) {
                         console.error('Failed to sync request:', error);
                     }
                 }
-                
+
                 localStorage.setItem('djEventData', JSON.stringify(storage));
             }
         }
@@ -2141,8 +2168,27 @@
         async function changeEventStatus(eventId, newStatus) {
             try {
                 // Mettre à jour localement d'abord pour une réponse rapide
-                const eventIndex = APP_STATE.events.findIndex(e => e.id === eventId);
+                let eventIndex = APP_STATE.events.findIndex(e => e.id === eventId);
                 if (eventIndex !== -1) {
+                    // Si l'événement a un ID local, tenter d'abord de le sauvegarder côté serveur pour obtenir un vrai ID
+                    if (APP_STATE.events[eventIndex].id && APP_STATE.events[eventIndex].id.startsWith('local_')) {
+                        try {
+                            const localEvent = APP_STATE.events[eventIndex];
+                            const res = await NetlifyDataManager.saveEvent(localEvent);
+                            if (res && res.success && res.data) {
+                                const serverEvent = res.data;
+                                // Remplacer l'événement en mémoire et dans le cache local
+                                APP_STATE.events.splice(eventIndex, 1, serverEvent);
+                                NetlifyDataManager.updateLocalCache('events', APP_STATE.events);
+                                // Mettre à jour l'eventId pour la suite (PUT)
+                                eventId = serverEvent.id;
+                                eventIndex = APP_STATE.events.findIndex(e => e.id === eventId);
+                            }
+                        } catch (e) {
+                            console.warn('Sauvegarde préalable de l\'événement échouée, activation en local uniquement', e);
+                        }
+                    }
+
                     const oldStatus = APP_STATE.events[eventIndex].status;
                     APP_STATE.events[eventIndex].status = newStatus;
                     APP_STATE.events[eventIndex].updatedAt = new Date().toISOString();
@@ -2169,9 +2215,7 @@
                         
                         NotificationManager.show(statusMessages[newStatus]);
                         
-                        // Forcer une synchronisation pour s'assurer que tout est à jour
                         await DataSyncManager.syncData(true);
-                        // Puis réactualiser le dashboard
                         await updateDJDashboard(true);
                         
                     } catch (error) {
