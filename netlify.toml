@@ -1,0 +1,20 @@
+[build]
+  publish = "public"  # ← Changer de "dist" vers "public"
+  functions = "netlify/functions"
+  command = "npm run build"
+
+[build.environment]
+  NODE_VERSION = "20"  # ← Mise à jour vers Node 20
+  NPM_VERSION = "10"   # ← Mise à jour vers npm 10
+
+[[redirects]]
+  from = "/api/*"
+  to = "/.netlify/functions/:splat"
+  status = 200
+
+[context.production.environment]
+  NODE_ENV = "production"
+
+[functions]
+  external_node_modules = ["@netlify/neon"]
+  node_bundler = "esbuild"
