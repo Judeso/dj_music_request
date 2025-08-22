@@ -972,34 +972,7 @@
         </div>
     </header>
 
-    <!-- Interface de Connexion -->
-    <div id="loginInterface" class="login-container">
-        <div class="login-card">
-            <div class="login-header">
-                <h1 class="login-title">🎵 DJ Event Manager</h1>
-                <p class="login-subtitle">Plateforme professionnelle de gestion musicale</p>
-            </div>
-            
-            <form id="loginForm">
-                <div class="form-group">
-                    <label class="form-label" for="username">Nom d'utilisateur</label>
-                    <input type="text" id="username" class="form-input" placeholder="Entrez votre nom d'utilisateur" required>
-                </div>
-                
-                <div class="form-group">
-                    <label class="form-label" for="password">Mot de passe</label>
-                    <input type="password" id="password" class="form-input" placeholder="Entrez votre mot de passe" required>
-                </div>
-                
-                <button type="submit" class="btn btn-primary btn-login" id="loginBtn">
-                    <span id="loginBtnText">Se connecter</span>
-                    <span id="loginLoader" class="hidden loading">🔄</span>
-                </button>
-            </form>
-            
-            <div id="loginError"></div>
-        </div>
-    </div>
+    
 
     <!-- Dashboard DJ -->
     <div id="djDashboard" class="dashboard hidden">
@@ -1046,80 +1019,7 @@
         </div>
     </div>
 
-    <!-- Interface Utilisateur -->
-    <div id="userInterface" class="user-interface hidden">
-        <div class="user-container">
-            <div class="user-card">
-                <div class="user-header">
-                    <h1 class="user-title">🎵 Demande Musicale</h1>
-                    <p class="user-subtitle">Proposez vos titres préférés en quelques clics</p>
-                </div>
-
-                <!-- Accès par code ou sélection -->
-                <div class="access-method">
-                    <div class="access-tabs">
-                        <button class="access-tab active" onclick="showAccessMethod('code')">🔢 Code événement</button>
-                        <button class="access-tab" onclick="showAccessMethod('list')">📋 Liste des événements</button>
-                    </div>
-                    
-                    <!-- Accès par code -->
-                    <div id="accessByCode" class="access-panel">
-                        <label class="form-label" for="eventCode">Entrez votre code événement :</label>
-                        <div class="code-input-container">
-                            <input type="text" id="eventCode" class="code-input" placeholder="Ex: ABC123" maxlength="12">
-                            <div class="scan-icon">📷</div>
-                        </div>
-                        <button class="btn btn-primary btn-sm" onclick="accessEventByCode()">Valider le code</button>
-
-                <!-- Formulaire de demande -->
-                <form id="musicRequestForm" class="hidden">
-                    <!-- Recherche Musicale Simplifiée -->
-                    <div class="form-group">
-                        <label class="form-label" for="songSearch">Rechercher une chanson</label>
-                        <div class="search-container">
-                            <input type="text" id="songSearch" class="search-input" 
-                                   placeholder="Tapez le titre d'une chanson (ex: Bohemian Rhapsody)" 
-                                   autocomplete="off">
-                            <div class="search-icon">🔍</div>
-                            <div class="search-results" id="searchResults"></div>
-                        </div>
-                        <small style="color: #64748b; margin-top: 5px; display: block;">
-                            🎵 Tapez quelques lettres et choisissez dans les suggestions, ou tapez le titre complet
-                        </small>
-                    </div>
-                    
-                    <div class="form-group">
-                        <label class="form-label" for="userName">Votre nom</label>
-                        <input type="text" id="userName" class="form-input" placeholder="Votre prénom" required>
-                        <small style="color: #64748b; margin-top: 5px; display: block;">
-                            Ce nom apparaîtra avec votre demande
-                        </small>
-                    </div>
-                    
-                    <button type="submit" class="btn btn-primary" style="width: 100%;" id="submitBtn">
-                        🎵 Envoyer ma demande
-                    </button>
-
-                    <!-- Cooldown indicator -->
-                    <div id="cooldownIndicator" class="hidden cooldown-timer">
-                        <div style="font-weight: 600; margin-bottom: 5px;">⏱️ Veuillez patienter</div>
-                        <div>Prochaine demande possible dans <span id="cooldownTime">30</span> secondes</div>
-                    </div>
-                </form>
-
-                <!-- Position dans la queue -->
-                <div id="queuePosition" class="queue-position hidden">
-                    <div class="position-number" id="positionNumber">-</div>
-                    <div class="position-text">Position dans la file d'attente</div>
-                    <div style="margin-top: 10px; font-size: 14px; opacity: 0.8;">
-                        <span id="queueInfo">Vos demandes en attente</span>
-                    </div>
-                </div>
-
-                <div id="userMessage"></div>
-            </div>
-        </div>
-    </div>
+    
 
     <!-- Modal Événement -->
     <div id="eventModal" class="modal">
@@ -2950,10 +2850,15 @@
                 return;
             }
             
-            // Event listeners
-            document.getElementById('loginForm').addEventListener('submit', handleLogin);
-            document.getElementById('eventForm').addEventListener('submit', handleEventForm);
-            document.getElementById('musicRequestForm').addEventListener('submit', handleMusicRequest);
+            // Event listeners (DJ-only). Guard optional forms that are not used anymore on index.html
+            const eventFormEl = document.getElementById('eventForm');
+            if (eventFormEl) eventFormEl.addEventListener('submit', handleEventForm);
+
+            const loginFormEl = document.getElementById('loginForm');
+            if (loginFormEl) loginFormEl.addEventListener('submit', handleLogin);
+
+            const musicRequestFormEl = document.getElementById('musicRequestForm');
+            if (musicRequestFormEl) musicRequestFormEl.addEventListener('submit', handleMusicRequest);
             
             // Démarrer la synchronisation si utilisateur
             if (APP_STATE.currentInterface === 'userInterface') {
