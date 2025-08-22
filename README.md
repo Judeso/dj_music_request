@@ -24,12 +24,10 @@ Application web permettant aux participants d'un événement d'envoyer des sugge
 ```
 dj_music_request-main/
 ├── public/                 # Frontend files
-│   ├── index.html         # Application principale
-│   ├── admin-login.html   # Interface d'administration
-│   ├── cleaner.html       # Outils de nettoyage
-│   ├── debug.html         # Outils de debug
-│   ├── script.js          # Scripts JavaScript
-│   └── auth-protection.js # Protection d'authentification
+│   ├── admin-login.html   # Page d'authentification (gateway DJ)
+│   ├── index.html         # Tableau de bord DJ (interface principale)
+│   ├── participant.html   # Page publique pour soumettre des demandes (via QR code)
+│   └── auth-protection.js # Protection d'authentification pour l'admin
 ├── netlify/
 │   └── functions/         # Serverless functions
 │       ├── db.js          # Configuration base de données
@@ -118,12 +116,9 @@ CREATE TABLE requests (
 
 ## 🎨 Interface utilisateur
 
-L'application propose plusieurs interfaces :
-
-- **Page principale** (`index.html`) : Interface pour les participants
-- **Panel admin** (`admin-login.html`) : Interface pour les DJs
-- **Outils de debug** (`debug.html`) : Outils de développement
-- **Nettoyage** (`cleaner.html`) : Outils de maintenance
+- **admin-login.html** : Porte d'entrée d'authentification pour le DJ (identifiants par défaut: admin / dj2025!)
+- **index.html** : Tableau de bord d'administration du DJ (gestion des événements et demandes)
+- **participant.html** : Interface publique où les invités soumettent leurs demandes (accès via QR code / lien)
 
 ## 🔒 Sécurité
 

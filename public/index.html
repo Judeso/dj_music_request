@@ -1982,6 +1982,7 @@
 
         async function handleEventForm(event) {
             event.preventDefault();
+            const form = document.getElementById('eventForm');
             
             const formData = {
                 name: SecurityManager.sanitizeInput(document.getElementById('eventName').value),
@@ -2014,7 +2015,6 @@
             saveLoader.classList.remove('hidden');
             
             try {
-                const form = document.getElementById('eventForm');
                 const eventId = form.dataset.eventId;
                 
                 if (eventId) {
