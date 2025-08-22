@@ -1211,6 +1211,25 @@
                             localStorage.setItem('djEventData', JSON.stringify(storage));
                             return { success: true, data: data };
                         }
+                        // Support local PUT/DELETE for events endpoints like "events/<id>"
+                        if (method === 'PUT' || method === 'DELETE') {
+                            try {
+                                const parts = endpoint.split('/');
+                                const eventId = parts.length > 1 ? parts[1] : null;
+                                if (!eventId) break;
+                                const idx = storage.events.findIndex(e => e.id === eventId);
+                                if (idx === -1) break;
+                                if (method === 'PUT') {
+                                    storage.events[idx] = { ...storage.events[idx], ...data, needsSync: true };
+                                    localStorage.setItem('djEventData', JSON.stringify(storage));
+                                    return { success: true, data: storage.events[idx] };
+                                } else {
+                                    storage.events.splice(idx, 1);
+                                    localStorage.setItem('djEventData', JSON.stringify(storage));
+                                    return { success: true, data: { id: eventId } };
+                                }
+                            } catch (_) { /* ignore */ }
+                        }
                         break;
                     case 'requests':
                         if (method === 'GET') return { success: true, data: storage.requests };
