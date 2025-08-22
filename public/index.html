@@ -70,8 +70,13 @@
             background: rgba(255, 255, 255, 0.1);
             backdrop-filter: blur(20px);
             border-bottom: 1px solid rgba(255, 255, 255, 0.2);
-            z-index: 1000;
             padding: 15px 0;
+            z-index: 9000; /* under admin auth bar (9999) */
+        }
+
+        /* When admin bar is present, push the app header below it */
+        body.has-admin-bar .app-header {
+            top: 40px; /* height defined in auth-protection.js */
         }
 
         .header-content {

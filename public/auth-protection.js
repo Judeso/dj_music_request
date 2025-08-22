@@ -91,6 +91,8 @@
             
             // Log déconnexion
             console.log('🚪 Déconnexion admin');
+            // Remove admin bar class on logout
+            try { document.body.classList.remove('has-admin-bar'); } catch (_) {}
             
             redirectToLogin();
         }
@@ -139,9 +141,6 @@
                     #admin-auth-bar .logout-btn:hover {
                         background: rgba(255,255,255,0.3);
                     }
-                    body {
-                        padding-top: 40px !important;
-                    }
                 </style>
                 <div class="auth-info">
                     <span>🔐 Mode Admin</span>
@@ -154,6 +153,9 @@
             document.body.insertBefore(authBar, document.body.firstChild);
         }
         
+        // Add class to body so the app header can offset correctly
+        try { document.body.classList.add('has-admin-bar'); } catch (_) {}
+
         // Mettre à jour le timer de session
         updateSessionTimer();
     }
