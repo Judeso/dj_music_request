@@ -181,9 +181,13 @@ export default async (request, context) => {
 
   } catch (err) {
     console.error('Events API Error:', err);
+    console.error('Error stack:', err.stack);
+    console.error('Request method:', request.method);
+    console.error('Request URL:', request.url);
     return new Response(JSON.stringify({ 
       success: false, 
-      error: err.message 
+      error: err.message,
+      stack: err.stack 
     }), { status: 500, headers });
   }
 };

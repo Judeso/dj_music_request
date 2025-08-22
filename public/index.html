@@ -1871,17 +1871,7 @@
                         console.log('Appel syncPendingData...');
                         await NetlifyDataManager.syncPendingData();
                     }
-                    // Synchroniser d'abord les données en attente si on revient en ligne
-                    if (APP_STATE.isOnline) {
-                        await NetlifyDataManager.syncPendingData();
-                    }
-
                     console.log('Synchronizing data...');
-                    
-                    // Synchroniser d'abord les données en attente si on revient en ligne
-                    if (APP_STATE.isOnline) {
-                        await NetlifyDataManager.syncPendingData();
-                    }
 
                     console.log('Récupération events/requests du serveur...');
                     const [events, requests] = await Promise.all([
@@ -1904,25 +1894,42 @@
                         const serverEventIds = new Set(serverEvents.map(e => e.id));
                         const serverRequestIds = new Set(serverRequests.map(r => r.id));
 
-                        // Merge with dedupe: prefer server events; drop local duplicates by shortCode or (name+date)
-            let mergedEvents = serverEvents.concat(pendingLocalEvents.filter(e => !serverEventIds.has(e.id)));
-            try {
-                const serverList = mergedEvents.filter(e => e.id && !String(e.id).startsWith('local_'));
-                const serverShorts = new Set(serverList.filter(e => e.shortCode).map(e => String(e.shortCode).toUpperCase()));
-                const serverSig = new Set(serverList.map(e => `${(e.name||'').trim().toUpperCase()}__${(e.date||'').toString()}`));
-                mergedEvents = mergedEvents.filter(e => {
-                    if (!e.id || !String(e.id).startsWith('local_')) return true;
-                    const sc = e.shortCode ? String(e.shortCode).toUpperCase() : null;
-                    const sig = `${(e.name||'').trim().toUpperCase()}__${(e.date||'').toString()}`;
-                    if (sc && serverShorts.has(sc)) return false;
-                    if (serverSig.has(sig)) return false;
-                    return true;
-                });
-            } catch(_) {}
+                        // Merge server events with pending local events (avoid duplicates by ID first)
+                        let mergedEvents = serverEvents.concat(pendingLocalEvents.filter(e => !serverEventIds.has(e.id)));
+                        console.log('Après merge initial:', mergedEvents.map(e => ({id: e.id, name: e.name, status: e.status})));
+                        
+                        // Only dedupe local_ events that have clear server equivalents
+                        try {
+                            const serverList = mergedEvents.filter(e => e.id && !String(e.id).startsWith('local_'));
+                            const serverShorts = new Set(serverList.filter(e => e.shortCode).map(e => String(e.shortCode).toUpperCase()));
+                            const serverSigSet = new Map(serverList.map(e => [ `${(e.name||'').trim().toUpperCase()}__${(e.date||'').toString()}`, e ]));
+                            
+                            const beforeDedupeCount = mergedEvents.length;
+                            mergedEvents = mergedEvents.filter(e => {
+                                // Keep all non-local events
+                                if (!e.id || !String(e.id).startsWith('local_')) return true;
+                                
+                                // For local events, only remove if there's a clear server duplicate
+                                const sc = e.shortCode ? String(e.shortCode).toUpperCase() : null;
+                                const sig = `${(e.name||'').trim().toUpperCase()}__${(e.date||'').toString()}`;
+                                
+                                // Only remove if shortCode matches AND name+date matches (double check)
+                                if (sc && serverShorts.has(sc)) {
+                                    const serverMatch = serverSigSet.get(sig);
+                                    if (serverMatch) {
+                                        console.log('Suppression doublon local:', e.id, 'remplacé par serveur:', serverMatch.id);
+                                        return false;
+                                    }
+                                }
+                                return true;
+                            });
+                            console.log('Déduplication: supprimé', beforeDedupeCount - mergedEvents.length, 'doublons locaux');
+                        } catch(_) {}
                         const mergedRequests = serverRequests.concat(pendingLocalRequests.filter(r => !serverRequestIds.has(r.id)));
 
                         APP_STATE.events = mergedEvents;
                         APP_STATE.musicRequests = mergedRequests;
+                        console.log('APP_STATE.events final après merge:', APP_STATE.events.map(e => ({id: e.id, name: e.name, status: e.status})));
                     } catch (_) {
                         APP_STATE.events = events || [];
                         APP_STATE.musicRequests = requests || [];
@@ -1934,13 +1941,11 @@
                         events: APP_STATE.events.length,
                         requests: APP_STATE.musicRequests.length
                     });
+                    console.log('=== FIN DataSyncManager.syncData ===');
 
-                    // Mettre à jour l'interface si nécessaire
                     this.updateUI();
-
                     APP_STATE.isOnline = true;
                     updateConnectionStatus();
-                    
                     return true;
                 } catch (error) {
                     console.error('Sync error:', error);
