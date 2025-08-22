@@ -1219,8 +1219,18 @@
                         // Support local PUT/DELETE for events endpoints like "events/<id>"
                         if (method === 'PUT' || method === 'DELETE') {
                             try {
-                                const parts = endpoint.split('/');
-                                const eventId = parts.length > 1 ? parts[1] : null;
+                                let eventId = null;
+                                // path form: events/<id>
+                                if (endpoint.includes('/')) {
+                                    const parts = endpoint.split('/');
+                                    eventId = parts[1] || null;
+                                }
+                                // query form: events?id=<id>
+                                if (!eventId && endpoint.includes('?')) {
+                                    const qs = endpoint.split('?')[1];
+                                    const params = new URLSearchParams(qs);
+                                    eventId = params.get('id');
+                                }
                                 if (!eventId) break;
                                 const idx = storage.events.findIndex(e => e.id === eventId);
                                 if (idx === -1) break;
@@ -1305,7 +1315,7 @@
             }
 
             static async updateEvent(eventId, updates) {
-                return await this.apiCall(`events/${eventId}`, 'PUT', updates);
+                return await this.apiCall(`events?id=${encodeURIComponent(eventId)}`, 'PUT', updates);
             }
 
             static async deleteEvent(eventId) {
@@ -1900,9 +1910,11 @@
             NotificationManager.show('Déconnexion réussie');
         }
 
-        async function updateDJDashboard() {
-            // Synchroniser les données
-            await DataSyncManager.syncData();
+        async function updateDJDashboard(skipSync = false) {
+            // Synchroniser les données (sauf si on demande de sauter pour éviter d'écraser l'état local immédiat)
+            if (!skipSync) {
+                await DataSyncManager.syncData();
+            }
             
             const activeEvents = APP_STATE.events.filter(e => e.status === 'active').length;
             const totalRequests = APP_STATE.musicRequests.length;
@@ -1955,6 +1967,14 @@
                 }[event.status];
                 
                 const eventRequests = APP_STATE.musicRequests.filter(r => r.eventId === event.id);
+                const rawLocation = event.location;
+                const safeLocation = (rawLocation && String(rawLocation).trim().length > 0 && !['null','undefined','N/A'].includes(String(rawLocation).trim()))
+                    ? String(rawLocation).trim()
+                    : 'Lieu à confirmer';
+                const expected = Number((event.expectedGuests === 'null' || event.expectedGuests === 'undefined') ? NaN : event.expectedGuests);
+                const safeGuestsText = Number.isFinite(expected) && expected > 0
+                    ? `${expected} invités attendus`
+                    : `Nombre d'invités non précisé`;
                 
                 return `
                     <div class="event-card">
@@ -1977,11 +1997,11 @@
                             </div>
                             <div class="event-detail">
                                 <span>📍</span>
-                                <span>${event.location}</span>
+                                <span>${safeLocation}</span>
                             </div>
                             <div class="event-detail">
                                 <span>👥</span>
-                                <span>${event.expectedGuests} invités attendus</span>
+                                <span>${safeGuestsText}</span>
                             </div>
                             <div class="event-detail">
                                 <span>🎵</span>
@@ -2015,8 +2035,9 @@
                     document.getElementById('eventName').value = event.name;
                     document.getElementById('eventType').value = event.type;
                     document.getElementById('eventDate').value = new Date(event.date).toISOString().slice(0, 16);
-                    document.getElementById('eventLocation').value = event.location;
-                    document.getElementById('expectedGuests').value = event.expectedGuests;
+                    document.getElementById('eventLocation').value = event.location || '';
+                    document.getElementById('expectedGuests').value = (event.expectedGuests ?? '')
+                        .toString();
                     document.getElementById('eventDescription').value = event.description || '';
                     document.getElementById('eventStatus').value = event.status;
                     
@@ -2126,15 +2147,17 @@
                     APP_STATE.events[eventIndex].status = newStatus;
                     APP_STATE.events[eventIndex].updatedAt = new Date().toISOString();
                     
-                    // Mettre à jour l'interface immédiatement
-                    updateDJDashboard();
+                    // Mettre à jour l'interface immédiatement sans resync pour éviter d'écraser l'état local
+                    updateDJDashboard(true);
                     
                     // Ensuite synchroniser avec le serveur
                     try {
-                        await NetlifyDataManager.updateEvent(eventId, { 
+                        const updatePayload = { 
                             status: newStatus,
                             updatedAt: new Date().toISOString()
-                        });
+                        };
+                        const apiResult = await NetlifyDataManager.updateEvent(eventId, updatePayload);
+                        console.log('UpdateEvent response:', apiResult);
                         
                         const statusMessages = {
                             'active': 'L\'événement est maintenant actif ! Les utilisateurs peuvent faire leurs demandes.',
@@ -2146,8 +2169,11 @@
                         
                         // Forcer une synchronisation pour s'assurer que tout est à jour
                         await DataSyncManager.syncData(true);
+                        // Puis réactualiser le dashboard
+                        await updateDJDashboard(true);
                         
                     } catch (error) {
+                        console.error('UpdateEvent failed:', error);
                         // En cas d'erreur serveur, revenir à l'ancien statut
                         APP_STATE.events[eventIndex].status = oldStatus;
                         updateDJDashboard();

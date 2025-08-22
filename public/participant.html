@@ -184,6 +184,8 @@
             <div class="event-info" id="eventInfo" style="display: none;">
                 <div class="event-name" id="eventName"></div>
                 <div class="event-date" id="eventDate"></div>
+                <div class="event-date" id="eventLocation"></div>
+                <div class="event-date" id="eventGuests"></div>
             </div>
         </div>
 
@@ -251,6 +253,18 @@
                                 month: 'long',
                                 day: 'numeric'
                             });
+                        const rawLocation = event.location;
+                        const safeLocation = (rawLocation && String(rawLocation).trim().length > 0 && !['null','undefined','N/A'].includes(String(rawLocation).trim()))
+                            ? String(rawLocation).trim()
+                            : 'Lieu à confirmer';
+                        const expected = Number((event.expectedGuests === 'null' || event.expectedGuests === 'undefined') ? NaN : event.expectedGuests);
+                        const safeGuestsText = Number.isFinite(expected) && expected > 0
+                            ? `${expected} invités attendus`
+                            : `Nombre d'invités non précisé`;
+                        const locEl = document.getElementById('eventLocation');
+                        const guestsEl = document.getElementById('eventGuests');
+                        if (locEl) locEl.textContent = `📍 ${safeLocation}`;
+                        if (guestsEl) guestsEl.textContent = `👥 ${safeGuestsText}`;
                         document.getElementById('eventInfo').style.display = 'block';
                     }
                 }

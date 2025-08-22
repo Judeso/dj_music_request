@@ -18,7 +18,20 @@ export default async (request, context) => {
     if (request.method === "GET") {
       // Récupère tous les events
       const rows = await sql`SELECT * FROM events ORDER BY date DESC`;
-      return new Response(JSON.stringify({ success: true, data: rows }), { 
+      const map = (r) => ({
+        id: r.id,
+        name: r.name,
+        date: r.date,
+        status: r.status || 'preparation',
+        location: r.location || null,
+        expectedGuests: r.expected_guests ?? null,
+        description: r.description || null,
+        shortCode: r.short_code || null,
+        createdAt: r.created_at || null,
+        updatedAt: r.updated_at || null,
+      });
+      const data = rows.map(map);
+      return new Response(JSON.stringify({ success: true, data }), { 
         status: 200, 
         headers 
       });
@@ -35,12 +48,37 @@ export default async (request, context) => {
         }), { status: 400, headers });
       }
 
-      const [newEvent] = await sql`
-        INSERT INTO events (id, name, date)
-        VALUES (${crypto.randomUUID()}, ${body.name}, ${body.date})
+      const id = crypto.randomUUID();
+      const nowIso = new Date().toISOString();
+      const status = body.status || 'preparation';
+      const location = body.location ?? null;
+      const expectedGuests = body.expectedGuests ?? null;
+      const description = body.description ?? null;
+      const shortCode = body.shortCode ?? null;
+
+      const [inserted] = await sql`
+        INSERT INTO events (
+          id, name, date, status, location, expected_guests, description, short_code, created_at, updated_at
+        ) VALUES (
+          ${id}, ${body.name}, ${body.date}, ${status}, ${location}, ${expectedGuests}, ${description}, ${shortCode}, ${nowIso}, ${nowIso}
+        )
         RETURNING *;
       `;
-      return new Response(JSON.stringify({ success: true, data: newEvent }), { 
+
+      const mapped = {
+        id: inserted.id,
+        name: inserted.name,
+        date: inserted.date,
+        status: inserted.status,
+        location: inserted.location || null,
+        expectedGuests: inserted.expected_guests ?? null,
+        description: inserted.description || null,
+        shortCode: inserted.short_code || null,
+        createdAt: inserted.created_at || nowIso,
+        updatedAt: inserted.updated_at || nowIso,
+      };
+
+      return new Response(JSON.stringify({ success: true, data: mapped }), { 
         status: 201, 
         headers 
       });
@@ -49,7 +87,8 @@ export default async (request, context) => {
     if (request.method === "PUT") {
       const body = await request.json();
       const url = new URL(request.url);
-      const eventId = url.pathname.split('/').pop();
+      // Support both query param (?id=...) and path segment (/events/:id)
+      const eventId = url.searchParams.get('id') || url.pathname.split('/').pop();
 
       if (!eventId) {
         return new Response(JSON.stringify({ success: false, error: "ID d'événement manquant" }), { status: 400, headers });
@@ -81,7 +120,20 @@ export default async (request, context) => {
         RETURNING *;
       `;
 
-      return new Response(JSON.stringify({ success: true, data: updated }), { status: 200, headers });
+      const mapped = {
+        id: updated.id,
+        name: updated.name,
+        date: updated.date,
+        status: updated.status || 'preparation',
+        location: updated.location || null,
+        expectedGuests: updated.expected_guests ?? null,
+        description: updated.description || null,
+        shortCode: updated.short_code || null,
+        createdAt: updated.created_at || null,
+        updatedAt: updated.updated_at || null,
+      };
+
+      return new Response(JSON.stringify({ success: true, data: mapped }), { status: 200, headers });
     }
 
     if (request.method === "DELETE") {
