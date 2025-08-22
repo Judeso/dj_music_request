@@ -1,28 +1,22 @@
 {
-  "name": "dj-event-manager",
-  "version": "2.1.0",
-  "description": "Gestionnaire d'événements DJ professionnel avec stockage persistant",
-  "main": "index.html",
+  "name": "dj-music-request",
+  "version": "1.0.0",
+  "description": "Application pour envoyer des suggestions de musique au DJ d'un événement",
+  "main": "index.js",
   "type": "module",
   "scripts": {
+    "start": "node server.js",
     "dev": "netlify dev",
-    "build": "echo 'Build complete'",
-    "deploy": "netlify deploy --prod",
-    "test": "node --experimental-modules test/run-tests.js"
+    "build": "echo 'Build completed successfully'"
   },
-  "keywords": ["dj", "events", "music", "wedding", "netlify", "serverless"],
-  "license": "MIT",
   "dependencies": {
-    "@netlify/blobs": "^8.1.0"
-  },
-  "devDependencies": {
-    "netlify-cli": "^17.0.0"
+    "@netlify/neon": "^0.1.0"
   },
   "engines": {
-    "node": ">=18.0.0"
+    "node": "18.x",
+    "npm": "9.x"
   },
- "dependencies": {
-  "@netlify/neon": "^0.6.0"
-}
-
+  "keywords": ["netlify", "music", "dj", "requests", "database"],
+  "author": "Judeso",
+  "license": "MIT"
 }
