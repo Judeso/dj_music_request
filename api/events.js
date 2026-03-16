@@ -2,7 +2,6 @@ import { sql } from './db.js';
 
 async function ensureTable() {
   // Drop + recreate pour avoir un schéma propre (migration one-shot)
-  await sql`DROP TABLE IF EXISTS events CASCADE`;
   await sql`
     CREATE TABLE IF NOT EXISTS events (
       id              TEXT PRIMARY KEY,

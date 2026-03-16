@@ -1,7 +1,6 @@
 import { sql } from './db.js';
 
 async function ensureTable() {
-  await sql`DROP TABLE IF EXISTS requests`;
   await sql`
     CREATE TABLE IF NOT EXISTS requests (
       id         TEXT PRIMARY KEY,
