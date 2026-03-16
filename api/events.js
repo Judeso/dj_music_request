@@ -1,21 +1,23 @@
 import { sql } from './db.js';
 
 async function ensureTable() {
+  // Créer la table de base si elle n'existe pas
   await sql`
     CREATE TABLE IF NOT EXISTS events (
-      id              TEXT PRIMARY KEY,
-      name            TEXT NOT NULL,
-      type            TEXT,
-      date            TEXT,
-      location        TEXT,
-      expected_guests INTEGER,
-      description     TEXT,
-      status          TEXT DEFAULT 'preparation',
-      short_code      TEXT,
-      created_at      TEXT,
-      updated_at      TEXT
+      id   TEXT PRIMARY KEY,
+      name TEXT NOT NULL
     )
   `;
+  // Ajouter les colonnes manquantes (idempotent grâce à IF NOT EXISTS)
+  await sql`ALTER TABLE events ADD COLUMN IF NOT EXISTS type TEXT`;
+  await sql`ALTER TABLE events ADD COLUMN IF NOT EXISTS date TEXT`;
+  await sql`ALTER TABLE events ADD COLUMN IF NOT EXISTS location TEXT`;
+  await sql`ALTER TABLE events ADD COLUMN IF NOT EXISTS expected_guests INTEGER`;
+  await sql`ALTER TABLE events ADD COLUMN IF NOT EXISTS description TEXT`;
+  await sql`ALTER TABLE events ADD COLUMN IF NOT EXISTS status TEXT DEFAULT 'preparation'`;
+  await sql`ALTER TABLE events ADD COLUMN IF NOT EXISTS short_code TEXT`;
+  await sql`ALTER TABLE events ADD COLUMN IF NOT EXISTS created_at TEXT`;
+  await sql`ALTER TABLE events ADD COLUMN IF NOT EXISTS updated_at TEXT`;
 }
 
 function toRow(row) {
@@ -35,7 +37,6 @@ function toRow(row) {
   };
 }
 
-// Parse le body JSON manuellement (req.body absent en ESM sur Vercel)
 async function parseBody(req) {
   if (req.body && typeof req.body === 'object') return req.body;
   return new Promise((resolve, reject) => {
