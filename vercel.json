@@ -1,7 +1,8 @@
 {
   "outputDirectory": "public",
-  "routes": [
-    { "src": "/api/(.*)", "dest": "/api/$1" },
-    { "src": "/(.*)", "dest": "/public/$1" }
+  "rewrites": [
+    { "source": "/api/events/:id", "destination": "/api/events/[id]" },
+    { "source": "/api/requests/:id", "destination": "/api/requests/[id]" },
+    { "source": "/((?!api/).*)", "destination": "/index.html" }
   ]
 }

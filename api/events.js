@@ -1,29 +1,4 @@
-// netlify/functions/events.js
 import { sql } from './db.js';
-
-const CORS = {
-  'Content-Type': 'application/json',
-  'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Methods': 'GET, POST, PUT, DELETE, OPTIONS',
-  'Access-Control-Allow-Headers': 'Content-Type'
-};
-
-function toRow(row) {
-  if (!row) return null;
-  return {
-    id:             row.id,
-    name:           row.name,
-    type:           row.type,
-    date:           row.date,
-    location:       row.location,
-    expectedGuests: row.expected_guests,
-    description:    row.description,
-    status:         row.status,
-    shortCode:      row.short_code,
-    createdAt:      row.created_at,
-    updatedAt:      row.updated_at
-  };
-}
 
 async function ensureTable() {
   await sql`
@@ -43,34 +18,49 @@ async function ensureTable() {
   `;
 }
 
-export default async (request, context) => {
-  if (request.method === 'OPTIONS') {
-    return new Response(null, { status: 204, headers: CORS });
-  }
+function toRow(row) {
+  if (!row) return null;
+  return {
+    id:             row.id,
+    name:           row.name,
+    type:           row.type,
+    date:           row.date,
+    location:       row.location,
+    expectedGuests: row.expected_guests,
+    description:    row.description,
+    status:         row.status,
+    shortCode:      row.short_code,
+    createdAt:      row.created_at,
+    updatedAt:      row.updated_at
+  };
+}
+
+export default async function handler(req, res) {
+  res.setHeader('Access-Control-Allow-Origin', '*');
+  res.setHeader('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS');
+  res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
+
+  if (req.method === 'OPTIONS') return res.status(204).end();
 
   try {
     await ensureTable();
 
-    const pathname = new URL(request.url).pathname;
-    const segments = pathname.split('/').filter(Boolean);
-    const lastSeg  = segments[segments.length - 1];
-    const eventId  = lastSeg !== 'events' ? lastSeg : null;
+    // Extract optional event ID from URL: /api/events/[id]
+    const parts = req.url.split('?')[0].split('/').filter(Boolean);
+    const last = parts[parts.length - 1];
+    const eventId = last !== 'events' ? last : null;
 
-    // GET — list all events
-    if (request.method === 'GET') {
+    // GET — list all
+    if (req.method === 'GET') {
       const rows = await sql`SELECT * FROM events ORDER BY date DESC`;
-      return new Response(
-        JSON.stringify({ success: true, data: rows.map(toRow) }),
-        { status: 200, headers: CORS }
-      );
+      return res.status(200).json({ success: true, data: rows.map(toRow) });
     }
 
-    // POST — create event
-    if (request.method === 'POST') {
-      const body = await request.json();
+    // POST — create
+    if (req.method === 'POST') {
+      const body = req.body;
       const now  = new Date().toISOString();
       const id   = crypto.randomUUID();
-
       const [row] = await sql`
         INSERT INTO events
           (id, name, type, date, location, expected_guests, description, status, short_code, created_at, updated_at)
@@ -81,17 +71,13 @@ export default async (request, context) => {
            ${body.createdAt ?? now}, ${body.updatedAt ?? now})
         RETURNING *
       `;
-      return new Response(
-        JSON.stringify({ success: true, data: toRow(row) }),
-        { status: 201, headers: CORS }
-      );
+      return res.status(201).json({ success: true, data: toRow(row) });
     }
 
-    // PUT — update event
-    if (request.method === 'PUT' && eventId) {
-      const body = await request.json();
+    // PUT — update
+    if (req.method === 'PUT' && eventId) {
+      const body = req.body;
       const now  = new Date().toISOString();
-
       const [row] = await sql`
         UPDATE events SET
           name            = COALESCE(${body.name            ?? null}, name),
@@ -106,38 +92,21 @@ export default async (request, context) => {
         WHERE id = ${eventId}
         RETURNING *
       `;
-      if (!row) {
-        return new Response(
-          JSON.stringify({ success: false, error: 'Event not found' }),
-          { status: 404, headers: CORS }
-        );
-      }
-      return new Response(
-        JSON.stringify({ success: true, data: toRow(row) }),
-        { status: 200, headers: CORS }
-      );
+      if (!row) return res.status(404).json({ success: false, error: 'Event not found' });
+      return res.status(200).json({ success: true, data: toRow(row) });
     }
 
-    // DELETE — delete event and its requests
-    if (request.method === 'DELETE' && eventId) {
+    // DELETE
+    if (req.method === 'DELETE' && eventId) {
       await sql`DELETE FROM requests WHERE event_id = ${eventId}`;
       await sql`DELETE FROM events    WHERE id       = ${eventId}`;
-      return new Response(
-        JSON.stringify({ success: true }),
-        { status: 200, headers: CORS }
-      );
+      return res.status(200).json({ success: true });
     }
 
-    return new Response(
-      JSON.stringify({ success: false, error: 'Méthode non supportée' }),
-      { status: 405, headers: CORS }
-    );
+    return res.status(405).json({ success: false, error: 'Méthode non supportée' });
 
   } catch (err) {
-    console.error('Events function error:', err);
-    return new Response(
-      JSON.stringify({ success: false, error: err.message }),
-      { status: 500, headers: CORS }
-    );
+    console.error('Events error:', err);
+    return res.status(500).json({ success: false, error: err.message });
   }
-};
+}
