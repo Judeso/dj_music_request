@@ -35,6 +35,20 @@ function toRow(row) {
   };
 }
 
+// Parse le body JSON manuellement (req.body absent en ESM sur Vercel)
+async function parseBody(req) {
+  if (req.body && typeof req.body === 'object') return req.body;
+  return new Promise((resolve, reject) => {
+    let data = '';
+    req.on('data', chunk => data += chunk);
+    req.on('end', () => {
+      try { resolve(data ? JSON.parse(data) : {}); }
+      catch (e) { resolve({}); }
+    });
+    req.on('error', reject);
+  });
+}
+
 export default async function handler(req, res) {
   res.setHeader('Access-Control-Allow-Origin', '*');
   res.setHeader('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS');
@@ -45,20 +59,17 @@ export default async function handler(req, res) {
   try {
     await ensureTable();
 
-    // Extract optional event ID from URL: /api/events/[id]
-    const parts = req.url.split('?')[0].split('/').filter(Boolean);
-    const last = parts[parts.length - 1];
-    const eventId = last !== 'events' ? last : null;
+    const parts   = req.url.split('?')[0].split('/').filter(Boolean);
+    const last    = parts[parts.length - 1];
+    const eventId = (last !== 'events' && last !== '[id]') ? last : null;
 
-    // GET — list all
     if (req.method === 'GET') {
       const rows = await sql`SELECT * FROM events ORDER BY date DESC`;
       return res.status(200).json({ success: true, data: rows.map(toRow) });
     }
 
-    // POST — create
     if (req.method === 'POST') {
-      const body = req.body;
+      const body = await parseBody(req);
       const now  = new Date().toISOString();
       const id   = crypto.randomUUID();
       const [row] = await sql`
@@ -74,9 +85,8 @@ export default async function handler(req, res) {
       return res.status(201).json({ success: true, data: toRow(row) });
     }
 
-    // PUT — update
     if (req.method === 'PUT' && eventId) {
-      const body = req.body;
+      const body = await parseBody(req);
       const now  = new Date().toISOString();
       const [row] = await sql`
         UPDATE events SET
@@ -96,7 +106,6 @@ export default async function handler(req, res) {
       return res.status(200).json({ success: true, data: toRow(row) });
     }
 
-    // DELETE
     if (req.method === 'DELETE' && eventId) {
       await sql`DELETE FROM requests WHERE event_id = ${eventId}`;
       await sql`DELETE FROM events    WHERE id       = ${eventId}`;

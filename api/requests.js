@@ -33,6 +33,19 @@ function toRow(row) {
   };
 }
 
+async function parseBody(req) {
+  if (req.body && typeof req.body === 'object') return req.body;
+  return new Promise((resolve, reject) => {
+    let data = '';
+    req.on('data', chunk => data += chunk);
+    req.on('end', () => {
+      try { resolve(data ? JSON.parse(data) : {}); }
+      catch (e) { resolve({}); }
+    });
+    req.on('error', reject);
+  });
+}
+
 export default async function handler(req, res) {
   res.setHeader('Access-Control-Allow-Origin', '*');
   res.setHeader('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS');
@@ -45,17 +58,15 @@ export default async function handler(req, res) {
 
     const parts     = req.url.split('?')[0].split('/').filter(Boolean);
     const last      = parts[parts.length - 1];
-    const requestId = last !== 'requests' ? last : null;
+    const requestId = (last !== 'requests' && last !== '[id]') ? last : null;
 
-    // GET — list all
     if (req.method === 'GET') {
       const rows = await sql`SELECT * FROM requests ORDER BY timestamp DESC`;
       return res.status(200).json({ success: true, data: rows.map(toRow) });
     }
 
-    // POST — create
     if (req.method === 'POST') {
-      const body = req.body;
+      const body = await parseBody(req);
       const id   = crypto.randomUUID();
       const now  = new Date().toISOString();
       const [row] = await sql`
@@ -70,9 +81,8 @@ export default async function handler(req, res) {
       return res.status(201).json({ success: true, data: toRow(row) });
     }
 
-    // PUT — update (mark as played)
     if (req.method === 'PUT' && requestId) {
-      const body = req.body;
+      const body = await parseBody(req);
       const [row] = await sql`
         UPDATE requests SET
           status    = COALESCE(${body.status   ?? null}, status),
@@ -84,7 +94,6 @@ export default async function handler(req, res) {
       return res.status(200).json({ success: true, data: toRow(row) });
     }
 
-    // DELETE
     if (req.method === 'DELETE' && requestId) {
       await sql`DELETE FROM requests WHERE id = ${requestId}`;
       return res.status(200).json({ success: true });
