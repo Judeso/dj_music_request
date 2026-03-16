@@ -1,13 +1,10 @@
 {
   "name": "dj-music-request",
-  "version": "1.0.0",
-  "description": "Application pour envoyer des suggestions de musique au DJ d'un événement",
-  "main": "index.js",
+  "version": "2.0.0",
+  "description": "Application de demandes musicales pour événements DJ",
   "type": "module",
   "scripts": {
-    "start": "node server.js",
-    "dev": "netlify dev",
-    "build": "echo 'Build completed successfully'"
+    "build": "echo 'Build OK'"
   },
   "dependencies": {
     "@neondatabase/serverless": "^0.10.4"
@@ -15,7 +12,6 @@
   "engines": {
     "node": "22.x"
   },
-  "keywords": ["netlify", "music", "dj", "requests", "database"],
   "author": "Judeso",
   "license": "MIT"
 }

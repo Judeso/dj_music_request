@@ -321,7 +321,7 @@
   <div class="user-wrap">
     <div class="user-header">
       <div class="brand"><div class="brand-dot"></div>DJ Event Manager</div>
-      <h1>Demande musicale 🎵</h1>
+      <h1>Proposez une musique 🎵</h1>
       <p>Proposez vos titres préférés au DJ en quelques secondes</p>
     </div>
     <div class="user-card">
@@ -334,7 +334,7 @@
       <div id="panelCode" class="tab-panel active">
         <div class="form-label">Entrez votre code événement</div>
         <div class="code-wrap">
-          <input id="eventCode" type="text" class="code-input" placeholder="MAZE1A2B" maxlength="10" autocomplete="off" spellcheck="false">
+          <input id="eventCode" type="text" class="code-input" placeholder="Ex : MAZE1A2B" maxlength="10" autocomplete="off" spellcheck="false">
           <span class="code-input-icon">🎫</span>
         </div>
         <button class="btn btn-primary btn-full" onclick="accessEventByCode()">Accéder à l'événement</button>
@@ -363,7 +363,7 @@
           <label class="form-label">Votre prénom</label>
           <input id="userName" type="text" class="form-input" placeholder="Ex : Sophie" required>
         </div>
-        <button type="submit" class="btn btn-primary btn-full" id="submitBtn">🎵 Envoyer ma demande</button>
+        <button type="submit" class="btn btn-primary btn-full" id="submitBtn">🎵 Envoyer ma demande au DJ</button>
         <div id="cooldownBar" class="cooldown-bar hidden">⏱️ Prochaine demande dans <strong id="cooldownSec">30</strong> secondes</div>
       </form>
 
@@ -443,7 +443,7 @@
 <script>
 'use strict';
 
-const CONFIG={DJ:{username:'dj_admin',password:'EventManager2024!'},API:'/api',COOLDOWN:30000,MAX_PER_USER:5,SYNC_INTERVAL:6000};
+const CONFIG={DJ:{username:'dj_admin',password:'EventManager2024!'},API:'/api',COOLDOWN:30000,MAX_PER_USER:5,SYNC_INTERVAL:15000};
 let STATE={user:null,currentPage:'login',events:[],requests:[],selectedEventId:null,userId:null,isOnline:true,lastRequest:0,selectedSong:null,searchTimer:null,cooldownTimer:null,lastSync:0,currentDJTab:'events'};
 
 // ── API ─────────────────────────────────────────────────────────────────
@@ -971,7 +971,7 @@ g('musicRequestForm').addEventListener('submit',async e=>{
     }else throw new Error(res.error);
   }catch(err){
     STATE.requests=STATE.requests.filter(r=>r.id!==temp.id);updateQueueCard();
-    notify("Erreur lors de l'envoi. Vérifiez votre connexion.",'error');
+    notify('Demande non envoyée — vérifiez votre connexion et réessayez.','error');
   }
   btn.disabled=false;btn.innerHTML=orig;
 });
