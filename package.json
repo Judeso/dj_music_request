@@ -10,11 +10,10 @@
     "build": "echo 'Build completed successfully'"
   },
   "dependencies": {
-    "@netlify/neon": "^0.1.0"
+    "@neondatabase/serverless": "^0.10.4"
   },
   "engines": {
-    "node": "18.x",
-    "npm": "9.x"
+    "node": "22.x"
   },
   "keywords": ["netlify", "music", "dj", "requests", "database"],
   "author": "Judeso",
