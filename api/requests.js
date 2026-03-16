@@ -15,6 +15,9 @@ async function ensureTable() {
   await sql`ALTER TABLE requests ADD COLUMN IF NOT EXISTS timestamp TEXT`;
   await sql`ALTER TABLE requests ADD COLUMN IF NOT EXISTS played_at TEXT`;
   await sql`ALTER TABLE requests ADD COLUMN IF NOT EXISTS user_agent TEXT`;
+  // Convertir les colonnes UUID en TEXT si elles existent avec l'ancien type
+  await sql`ALTER TABLE requests ALTER COLUMN id       TYPE TEXT USING id::TEXT`;
+  await sql`ALTER TABLE requests ALTER COLUMN event_id TYPE TEXT USING event_id::TEXT`;
 }
 
 function toRow(row) {

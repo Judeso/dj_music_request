@@ -18,6 +18,7 @@ async function ensureTable() {
   await sql`ALTER TABLE events ADD COLUMN IF NOT EXISTS short_code TEXT`;
   await sql`ALTER TABLE events ADD COLUMN IF NOT EXISTS created_at TEXT`;
   await sql`ALTER TABLE events ADD COLUMN IF NOT EXISTS updated_at TEXT`;
+  await sql`ALTER TABLE events ALTER COLUMN id TYPE TEXT USING id::TEXT`;
 }
 
 function toRow(row) {
