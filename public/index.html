@@ -488,10 +488,13 @@ const DataSyncManager={
     if(!force&&now-STATE.lastSync<CONFIG.SYNC_INTERVAL)return;
     try{
       const[evR,rqR]=await Promise.all([API.getEvents(),API.getRequests()]);
+      const evJson=JSON.stringify(evR.data||[]);
+      const rqJson=JSON.stringify(rqR.data||[]);
+      const changed=evJson!==JSON.stringify(STATE.events)||rqJson!==JSON.stringify(STATE.requests);
       if(evR.success)STATE.events=evR.data||[];
       if(rqR.success)STATE.requests=rqR.data||[];
       STATE.lastSync=now;
-      renderCurrentView();
+      if(force||changed)renderCurrentView();
     }catch(e){console.error('Sync',e);}
   },
   startAutoSync(){this.syncData(true);if(this._iv)clearInterval(this._iv);this._iv=setInterval(()=>this.syncData(),CONFIG.SYNC_INTERVAL)},

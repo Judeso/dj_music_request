@@ -3,18 +3,18 @@ import { sql } from './db.js';
 async function ensureTable() {
   await sql`
     CREATE TABLE IF NOT EXISTS requests (
-      id         TEXT PRIMARY KEY,
-      event_id   TEXT,
-      song_title TEXT,
-      artist     TEXT,
-      user_name  TEXT,
-      user_id    TEXT,
-      status     TEXT DEFAULT 'pending',
-      timestamp  TEXT,
-      played_at  TEXT,
-      user_agent TEXT
+      id   TEXT PRIMARY KEY,
+      event_id TEXT
     )
   `;
+  await sql`ALTER TABLE requests ADD COLUMN IF NOT EXISTS song_title TEXT`;
+  await sql`ALTER TABLE requests ADD COLUMN IF NOT EXISTS artist TEXT`;
+  await sql`ALTER TABLE requests ADD COLUMN IF NOT EXISTS user_name TEXT`;
+  await sql`ALTER TABLE requests ADD COLUMN IF NOT EXISTS user_id TEXT`;
+  await sql`ALTER TABLE requests ADD COLUMN IF NOT EXISTS status TEXT DEFAULT 'pending'`;
+  await sql`ALTER TABLE requests ADD COLUMN IF NOT EXISTS timestamp TEXT`;
+  await sql`ALTER TABLE requests ADD COLUMN IF NOT EXISTS played_at TEXT`;
+  await sql`ALTER TABLE requests ADD COLUMN IF NOT EXISTS user_agent TEXT`;
 }
 
 function toRow(row) {
