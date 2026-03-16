@@ -1,24 +1,31 @@
 import { sql } from './db.js';
 
 async function ensureTable() {
-  // Créer la table de base si elle n'existe pas
+  // Drop + recreate pour avoir un schéma propre (migration one-shot)
+  await sql`DROP TABLE IF EXISTS events CASCADE`;
   await sql`
     CREATE TABLE IF NOT EXISTS events (
-      id   TEXT PRIMARY KEY,
-      name TEXT NOT NULL
+      id              TEXT PRIMARY KEY,
+      name            TEXT NOT NULL,
+      type            TEXT,
+      date            TEXT,
+      location        TEXT,
+      expected_guests INTEGER,
+      description     TEXT,
+      status          TEXT DEFAULT 'preparation',
+      short_code      TEXT,
+      created_at      TEXT,
+      updated_at      TEXT
     )
   `;
-  // Ajouter les colonnes manquantes (idempotent grâce à IF NOT EXISTS)
-  await sql`ALTER TABLE events ADD COLUMN IF NOT EXISTS type TEXT`;
-  await sql`ALTER TABLE events ADD COLUMN IF NOT EXISTS date TEXT`;
-  await sql`ALTER TABLE events ADD COLUMN IF NOT EXISTS location TEXT`;
-  await sql`ALTER TABLE events ADD COLUMN IF NOT EXISTS expected_guests INTEGER`;
-  await sql`ALTER TABLE events ADD COLUMN IF NOT EXISTS description TEXT`;
-  await sql`ALTER TABLE events ADD COLUMN IF NOT EXISTS status TEXT DEFAULT 'preparation'`;
-  await sql`ALTER TABLE events ADD COLUMN IF NOT EXISTS short_code TEXT`;
-  await sql`ALTER TABLE events ADD COLUMN IF NOT EXISTS created_at TEXT`;
-  await sql`ALTER TABLE events ADD COLUMN IF NOT EXISTS updated_at TEXT`;
-  await sql`ALTER TABLE events ALTER COLUMN id TYPE TEXT USING id::TEXT`;
+}
+
+// Flag pour ne faire la migration qu'une fois par cold start
+let tableReady = false;
+async function initTable() {
+  if (tableReady) return;
+  await ensureTable();
+  tableReady = true;
 }
 
 function toRow(row) {
@@ -45,7 +52,7 @@ async function parseBody(req) {
     req.on('data', chunk => data += chunk);
     req.on('end', () => {
       try { resolve(data ? JSON.parse(data) : {}); }
-      catch (e) { resolve({}); }
+      catch(e) { resolve({}); }
     });
     req.on('error', reject);
   });
@@ -55,11 +62,10 @@ export default async function handler(req, res) {
   res.setHeader('Access-Control-Allow-Origin', '*');
   res.setHeader('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS');
   res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
-
   if (req.method === 'OPTIONS') return res.status(204).end();
 
   try {
-    await ensureTable();
+    await initTable();
 
     const parts   = req.url.split('?')[0].split('/').filter(Boolean);
     const last    = parts[parts.length - 1];

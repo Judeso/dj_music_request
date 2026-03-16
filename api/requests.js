@@ -1,23 +1,28 @@
 import { sql } from './db.js';
 
 async function ensureTable() {
+  await sql`DROP TABLE IF EXISTS requests`;
   await sql`
     CREATE TABLE IF NOT EXISTS requests (
-      id   TEXT PRIMARY KEY,
-      event_id TEXT
+      id         TEXT PRIMARY KEY,
+      event_id   TEXT,
+      song_title TEXT,
+      artist     TEXT,
+      user_name  TEXT,
+      user_id    TEXT,
+      status     TEXT DEFAULT 'pending',
+      timestamp  TEXT,
+      played_at  TEXT,
+      user_agent TEXT
     )
   `;
-  await sql`ALTER TABLE requests ADD COLUMN IF NOT EXISTS song_title TEXT`;
-  await sql`ALTER TABLE requests ADD COLUMN IF NOT EXISTS artist TEXT`;
-  await sql`ALTER TABLE requests ADD COLUMN IF NOT EXISTS user_name TEXT`;
-  await sql`ALTER TABLE requests ADD COLUMN IF NOT EXISTS user_id TEXT`;
-  await sql`ALTER TABLE requests ADD COLUMN IF NOT EXISTS status TEXT DEFAULT 'pending'`;
-  await sql`ALTER TABLE requests ADD COLUMN IF NOT EXISTS timestamp TEXT`;
-  await sql`ALTER TABLE requests ADD COLUMN IF NOT EXISTS played_at TEXT`;
-  await sql`ALTER TABLE requests ADD COLUMN IF NOT EXISTS user_agent TEXT`;
-  // Convertir les colonnes UUID en TEXT si elles existent avec l'ancien type
-  await sql`ALTER TABLE requests ALTER COLUMN id       TYPE TEXT USING id::TEXT`;
-  await sql`ALTER TABLE requests ALTER COLUMN event_id TYPE TEXT USING event_id::TEXT`;
+}
+
+let tableReady = false;
+async function initTable() {
+  if (tableReady) return;
+  await ensureTable();
+  tableReady = true;
 }
 
 function toRow(row) {
@@ -43,7 +48,7 @@ async function parseBody(req) {
     req.on('data', chunk => data += chunk);
     req.on('end', () => {
       try { resolve(data ? JSON.parse(data) : {}); }
-      catch (e) { resolve({}); }
+      catch(e) { resolve({}); }
     });
     req.on('error', reject);
   });
@@ -53,11 +58,10 @@ export default async function handler(req, res) {
   res.setHeader('Access-Control-Allow-Origin', '*');
   res.setHeader('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS');
   res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
-
   if (req.method === 'OPTIONS') return res.status(204).end();
 
   try {
-    await ensureTable();
+    await initTable();
 
     const parts     = req.url.split('?')[0].split('/').filter(Boolean);
     const last      = parts[parts.length - 1];
