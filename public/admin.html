@@ -1,0 +1,645 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Super Admin — DJ Event Manager</title>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+  <style>
+    *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+    :root{
+      --bg:#0d0f14;--surface:#161b27;--surface2:#1e2535;--border:#2a3347;
+      --text:#e8eaf0;--muted:#7b8aaa;--primary:#6366f1;--primary-lt:rgba(99,102,241,.15);
+      --success:#10b981;--success-lt:rgba(16,185,129,.15);
+      --danger:#ef4444;--danger-lt:rgba(239,68,68,.15);
+      --warning:#f59e0b;--warning-lt:rgba(245,158,11,.15);
+      --r:8px;--rl:12px;
+      --sh:0 4px 20px rgba(0,0,0,.4);
+    }
+    body{font-family:'Inter',-apple-system,sans-serif;background:var(--bg);color:var(--text);min-height:100vh;font-size:14px;line-height:1.5}
+    .hidden{display:none!important}
+    @keyframes fadeUp{from{opacity:0;transform:translateY(12px)}to{opacity:1;transform:none}}
+    @keyframes spin{to{transform:rotate(360deg)}}
+    @keyframes pulse{0%,100%{opacity:1}50%{opacity:.4}}
+
+    /* ── Login ── */
+    #loginPage{min-height:100vh;display:flex;align-items:center;justify-content:center;background:radial-gradient(ellipse 70% 50% at 50% 0%,rgba(99,102,241,.2) 0%,var(--bg) 70%)}
+    .login-box{width:100%;max-width:360px;animation:fadeUp .4s ease}
+    .login-logo{text-align:center;margin-bottom:28px}
+    .login-icon{display:inline-flex;align-items:center;justify-content:center;width:56px;height:56px;background:var(--primary);border-radius:16px;font-size:26px;margin-bottom:14px;box-shadow:0 8px 28px rgba(99,102,241,.4)}
+    .login-logo h1{font-size:20px;font-weight:700}
+    .login-logo p{font-size:12px;color:var(--muted);margin-top:4px;letter-spacing:.5px;text-transform:uppercase}
+    .login-card{background:var(--surface);border:1px solid var(--border);border-radius:var(--rl);padding:28px;box-shadow:var(--sh)}
+    .form-label{font-size:12px;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:.5px;margin-bottom:6px}
+    .form-group{margin-bottom:16px}
+    .form-input{width:100%;background:var(--surface2);border:1px solid var(--border);border-radius:var(--r);padding:10px 14px;color:var(--text);font-family:inherit;font-size:14px;outline:none;transition:border .15s}
+    .form-input:focus{border-color:var(--primary)}
+    .form-input.is-error{border-color:var(--danger);animation:shake .3s}
+    @keyframes shake{0%,100%{transform:translateX(0)}25%{transform:translateX(-5px)}75%{transform:translateX(5px)}}
+    .btn{display:inline-flex;align-items:center;gap:6px;padding:9px 16px;border-radius:var(--r);font-size:13px;font-weight:600;font-family:inherit;border:none;cursor:pointer;transition:all .15s;white-space:nowrap}
+    .btn:disabled{opacity:.4;cursor:not-allowed}
+    .btn-primary{background:var(--primary);color:#fff}
+    .btn-primary:hover:not(:disabled){background:#4f52d6;box-shadow:0 4px 14px rgba(99,102,241,.4)}
+    .btn-danger{background:var(--danger-lt);color:var(--danger);border:1px solid rgba(239,68,68,.3)}
+    .btn-danger:hover:not(:disabled){background:var(--danger);color:#fff}
+    .btn-ghost{background:transparent;color:var(--muted);border:1px solid var(--border)}
+    .btn-ghost:hover:not(:disabled){background:var(--surface2);color:var(--text)}
+    .btn-success{background:var(--success-lt);color:var(--success);border:1px solid rgba(16,185,129,.3)}
+    .btn-success:hover:not(:disabled){background:var(--success);color:#fff}
+    .btn-sm{padding:6px 12px;font-size:12px}
+    .btn-full{width:100%;justify-content:center}
+    .spinner{width:14px;height:14px;border-radius:50%;border:2px solid rgba(255,255,255,.25);border-top-color:#fff;animation:spin .7s linear infinite;display:inline-block}
+
+    /* ── App layout ── */
+    #adminApp{display:flex;min-height:100vh}
+    .sidebar{width:220px;flex-shrink:0;background:var(--surface);border-right:1px solid var(--border);display:flex;flex-direction:column;padding:20px 0}
+    .sidebar-brand{padding:0 20px 20px;border-bottom:1px solid var(--border);margin-bottom:12px}
+    .sidebar-brand .name{font-size:15px;font-weight:700;color:var(--text)}
+    .sidebar-brand .tag{font-size:11px;color:var(--primary);font-weight:600;letter-spacing:.5px;text-transform:uppercase}
+    .nav-section{padding:4px 12px;font-size:11px;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:.5px;margin:8px 0 4px}
+    .sidebar-link{display:flex;align-items:center;gap:10px;padding:9px 20px;font-size:13px;font-weight:500;color:var(--muted);background:none;border:none;cursor:pointer;width:100%;text-align:left;border-radius:0;transition:all .15s;font-family:inherit}
+    .sidebar-link:hover{color:var(--text);background:var(--surface2)}
+    .sidebar-link.active{color:var(--primary);background:var(--primary-lt);font-weight:600}
+    .sidebar-link .ico{font-size:15px;width:18px;text-align:center}
+    .sidebar-footer{margin-top:auto;padding:16px 20px;border-top:1px solid var(--border)}
+    .sidebar-footer .version{font-size:11px;color:var(--muted);margin-bottom:8px}
+    .main{flex:1;display:flex;flex-direction:column;overflow:hidden}
+    .topbar{display:flex;align-items:center;justify-content:space-between;padding:16px 28px;border-bottom:1px solid var(--border);background:var(--surface)}
+    .topbar-title{font-size:17px;font-weight:700}
+    .topbar-actions{display:flex;gap:8px;align-items:center}
+    .content{padding:24px 28px;flex:1;overflow-y:auto}
+    .section{display:none}
+    .section.active{display:block;animation:fadeUp .3s ease}
+
+    /* ── Stats ── */
+    .stats-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:16px;margin-bottom:24px}
+    .stat-card{background:var(--surface);border:1px solid var(--border);border-radius:var(--rl);padding:20px;position:relative;overflow:hidden}
+    .stat-card::before{content:'';position:absolute;top:0;left:0;right:0;height:3px}
+    .stat-card.purple::before{background:var(--primary)}
+    .stat-card.green::before{background:var(--success)}
+    .stat-card.amber::before{background:var(--warning)}
+    .stat-card.red::before{background:var(--danger)}
+    .stat-icon{font-size:22px;margin-bottom:12px}
+    .stat-value{font-size:28px;font-weight:700;line-height:1}
+    .stat-label{font-size:12px;color:var(--muted);margin-top:4px;font-weight:500}
+
+    /* ── Tables ── */
+    .table-wrap{background:var(--surface);border:1px solid var(--border);border-radius:var(--rl);overflow:hidden}
+    .table-header{display:flex;align-items:center;justify-content:space-between;padding:14px 18px;border-bottom:1px solid var(--border)}
+    .table-header h3{font-size:14px;font-weight:600}
+    table{width:100%;border-collapse:collapse}
+    th{text-align:left;padding:11px 16px;font-size:11px;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:.5px;background:var(--surface2);border-bottom:1px solid var(--border)}
+    td{padding:12px 16px;border-bottom:1px solid var(--border);font-size:13px;vertical-align:middle}
+    tr:last-child td{border-bottom:none}
+    tr:hover td{background:rgba(255,255,255,.02)}
+    .badge{display:inline-flex;align-items:center;padding:3px 8px;border-radius:20px;font-size:11px;font-weight:600}
+    .badge-green{background:var(--success-lt);color:var(--success)}
+    .badge-red{background:var(--danger-lt);color:var(--danger)}
+    .badge-amber{background:var(--warning-lt);color:var(--warning)}
+    .badge-purple{background:var(--primary-lt);color:var(--primary)}
+    .badge-muted{background:var(--surface2);color:var(--muted)}
+    .empty{text-align:center;padding:48px 20px;color:var(--muted)}
+    .empty .ico{font-size:36px;margin-bottom:12px}
+    .actions{display:flex;gap:6px}
+
+    /* ── Modal ── */
+    .modal-backdrop{position:fixed;inset:0;background:rgba(0,0,0,.7);display:flex;align-items:center;justify-content:center;z-index:100;padding:20px}
+    .modal-backdrop.hidden{display:none}
+    .modal{background:var(--surface);border:1px solid var(--border);border-radius:var(--rl);width:100%;max-width:440px;box-shadow:var(--sh);animation:fadeUp .25s ease}
+    .modal-header{padding:20px 24px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between}
+    .modal-header h3{font-size:16px;font-weight:700}
+    .modal-close{background:none;border:none;color:var(--muted);cursor:pointer;font-size:18px;padding:2px 6px;border-radius:4px}
+    .modal-close:hover{color:var(--text);background:var(--surface2)}
+    .modal-body{padding:20px 24px}
+    .modal-footer{padding:16px 24px;border-top:1px solid var(--border);display:flex;justify-content:flex-end;gap:8px}
+
+    /* ── Danger zone ── */
+    .danger-zone{border:1px solid rgba(239,68,68,.3);border-radius:var(--rl);padding:20px;margin-top:24px}
+    .danger-zone h3{color:var(--danger);font-size:14px;font-weight:700;margin-bottom:4px}
+    .danger-zone p{color:var(--muted);font-size:12px;margin-bottom:16px}
+    .danger-actions{display:flex;gap:10px;flex-wrap:wrap}
+
+    /* ── Filters ── */
+    .filters{display:flex;gap:10px;align-items:center;margin-bottom:18px;flex-wrap:wrap}
+    select.filter-select{font-family:inherit;font-size:13px;padding:8px 12px;border-radius:var(--r);border:1px solid var(--border);background:var(--surface2);color:var(--text);cursor:pointer;outline:none}
+    select.filter-select:focus{border-color:var(--primary)}
+
+    /* ── Toast ── */
+    #toast{position:fixed;bottom:24px;right:24px;z-index:999;display:flex;flex-direction:column;gap:8px;pointer-events:none}
+    .toast{background:var(--surface);border:1px solid var(--border);border-radius:var(--r);padding:12px 16px;font-size:13px;font-weight:500;box-shadow:var(--sh);animation:fadeUp .3s ease;max-width:320px}
+    .toast.success{border-left:3px solid var(--success);color:var(--success)}
+    .toast.error{border-left:3px solid var(--danger);color:var(--danger)}
+    .toast.info{border-left:3px solid var(--primary);color:var(--primary)}
+  </style>
+</head>
+<body>
+
+<!-- Pas de page login : auth gérée par index.html -->
+
+<!-- APP -->
+<div id="adminApp" class="hidden">
+  <!-- Sidebar -->
+  <nav class="sidebar">
+    <div class="sidebar-brand">
+      <div class="name">🛡️ Super Admin</div>
+      <div class="tag">DJ Event Manager</div>
+    </div>
+    <div class="nav-section">Navigation</div>
+    <button class="sidebar-link active" onclick="showSection('dashboard')"><span class="ico">📊</span>Dashboard</button>
+    <button class="sidebar-link" onclick="showSection('accounts')"><span class="ico">👥</span>Comptes DJ</button>
+    <button class="sidebar-link" onclick="showSection('events')"><span class="ico">🎉</span>Événements</button>
+    <button class="sidebar-link" onclick="showSection('requests')"><span class="ico">🎵</span>Demandes</button>
+    <div class="nav-section">Système</div>
+    <button class="sidebar-link" onclick="showSection('database')"><span class="ico">🗄️</span>Base de données</button>
+    <div class="sidebar-footer">
+      <div class="version">v1.0 — Super Admin</div>
+      <button class="btn btn-ghost btn-sm btn-full" onclick="logout()">Déconnexion</button>
+    </div>
+  </nav>
+
+  <!-- Main -->
+  <div class="main">
+    <div class="topbar">
+      <div class="topbar-title" id="sectionTitle">Dashboard</div>
+      <div class="topbar-actions">
+        <button class="btn btn-ghost btn-sm" onclick="refreshAll()">↻ Actualiser</button>
+      </div>
+    </div>
+    <div class="content">
+
+      <!-- DASHBOARD -->
+      <div id="secDashboard" class="section active">
+        <div class="stats-grid">
+          <div class="stat-card purple"><div class="stat-icon">🎉</div><div class="stat-value" id="stEvents">—</div><div class="stat-label">Événements total</div></div>
+          <div class="stat-card green"><div class="stat-icon">🎵</div><div class="stat-value" id="stRequests">—</div><div class="stat-label">Demandes total</div></div>
+          <div class="stat-card amber"><div class="stat-icon">⏳</div><div class="stat-value" id="stPending">—</div><div class="stat-label">En attente</div></div>
+          <div class="stat-card red"><div class="stat-icon">👥</div><div class="stat-value" id="stAccounts">—</div><div class="stat-label">Comptes DJ</div></div>
+        </div>
+        <div class="table-wrap">
+          <div class="table-header"><h3>Activité récente — dernières demandes</h3></div>
+          <div id="recentActivity"><div class="empty"><div class="ico">⏳</div><p>Chargement…</p></div></div>
+        </div>
+      </div>
+
+      <!-- COMPTES DJ -->
+      <div id="secAccounts" class="section">
+        <div class="table-wrap">
+          <div class="table-header">
+            <h3>Comptes DJ</h3>
+            <button class="btn btn-primary btn-sm" onclick="openAccountModal()">+ Nouveau compte</button>
+          </div>
+          <div id="accountsTable"><div class="empty"><div class="ico">⏳</div><p>Chargement…</p></div></div>
+        </div>
+      </div>
+
+      <!-- ÉVÉNEMENTS -->
+      <div id="secEvents" class="section">
+        <div class="table-wrap">
+          <div class="table-header"><h3>Tous les événements</h3></div>
+          <div id="eventsTable"><div class="empty"><div class="ico">⏳</div><p>Chargement…</p></div></div>
+        </div>
+      </div>
+
+      <!-- DEMANDES -->
+      <div id="secRequests" class="section">
+        <div class="filters">
+          <select class="filter-select" id="reqEventFilter" onchange="renderRequests()">
+            <option value="">🎉 Tous les événements</option>
+          </select>
+          <select class="filter-select" id="reqStatusFilter" onchange="renderRequests()">
+            <option value="">Tous les statuts</option>
+            <option value="pending">En attente</option>
+            <option value="played">Jouées</option>
+          </select>
+          <button class="btn btn-ghost btn-sm" onclick="exportRequestsCSV()">⬇ Export CSV</button>
+        </div>
+        <div class="table-wrap">
+          <div class="table-header"><h3 id="reqTableTitle">Toutes les demandes</h3></div>
+          <div id="requestsTable"><div class="empty"><div class="ico">⏳</div><p>Chargement…</p></div></div>
+        </div>
+      </div>
+
+      <!-- BASE DE DONNÉES -->
+      <div id="secDatabase" class="section">
+        <div class="table-wrap" style="margin-bottom:20px">
+          <div class="table-header"><h3>Exports</h3></div>
+          <div style="padding:20px;display:flex;gap:12px;flex-wrap:wrap">
+            <button class="btn btn-ghost" onclick="exportEventsCSV()">⬇ Exporter événements (CSV)</button>
+            <button class="btn btn-ghost" onclick="exportRequestsCSV()">⬇ Exporter demandes (CSV)</button>
+            <button class="btn btn-ghost" onclick="exportAccountsCSV()">⬇ Exporter comptes DJ (CSV)</button>
+          </div>
+        </div>
+        <div class="danger-zone">
+          <h3>⚠️ Zone de danger</h3>
+          <p>Ces actions sont irréversibles. Procéder avec précaution.</p>
+          <div class="danger-actions">
+            <button class="btn btn-danger" onclick="purgeRequests()">🗑 Purger toutes les demandes</button>
+            <button class="btn btn-danger" onclick="purgeEvents()">🗑 Purger tous les événements</button>
+          </div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+</div>
+
+<!-- MODAL COMPTE -->
+<div id="accountModal" class="modal-backdrop hidden" onclick="closeModal(event)">
+  <div class="modal">
+    <div class="modal-header">
+      <h3 id="modalTitle">Nouveau compte DJ</h3>
+      <button class="modal-close" onclick="closeAccountModal()">✕</button>
+    </div>
+    <div class="modal-body">
+      <form id="accountForm">
+        <div class="form-group">
+          <div class="form-label">Nom d'affichage</div>
+          <input id="fDisplayName" type="text" class="form-input" placeholder="Ex: DJ Sono Delorme">
+        </div>
+        <div class="form-group">
+          <div class="form-label">Identifiant *</div>
+          <input id="fUsername" type="text" class="form-input" placeholder="Ex: sono_delorme" required autocomplete="off">
+        </div>
+        <div class="form-group">
+          <div class="form-label">Mot de passe *</div>
+          <input id="fPassword" type="text" class="form-input" placeholder="Ex: sono01!" required autocomplete="off">
+        </div>
+        <div class="form-group">
+          <div class="form-label">Statut</div>
+          <select id="fStatus" class="form-input filter-select" style="width:100%">
+            <option value="active">Actif</option>
+            <option value="inactive">Inactif</option>
+          </select>
+        </div>
+      </form>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-ghost" onclick="closeAccountModal()">Annuler</button>
+      <button class="btn btn-primary" id="modalSaveBtn" onclick="saveAccount()">
+        <span id="modalSaveTxt">Créer le compte</span>
+        <span id="modalSaveSpin" class="spinner hidden"></span>
+      </button>
+    </div>
+  </div>
+</div>
+
+<!-- TOAST -->
+<div id="toast"></div>
+
+<script>
+const API = '/api';
+let ADMIN_KEY = '';
+let DATA = { events: [], requests: [], accounts: [] };
+let editingAccountId = null;
+
+// ── Auth : vérification sessionStorage au chargement ──────────────────────
+(async function init() {
+  const key = sessionStorage.getItem('adminKey');
+  if (!key) { window.location.href = '/'; return; }
+  // Vérifier que la clé est encore valide
+  try {
+    const res = await fetch(API + '/accounts', { headers: { 'X-Admin-Key': key } });
+    if (res.status === 403) { sessionStorage.removeItem('adminKey'); window.location.href = '/'; return; }
+    ADMIN_KEY = key;
+    document.getElementById('adminApp').classList.remove('hidden');
+    const data = await res.json();
+    DATA.accounts = data.data || [];
+    await refreshAll();
+  } catch(err) {
+    document.getElementById('adminApp').classList.remove('hidden');
+    ADMIN_KEY = key;
+    await refreshAll();
+  }
+})();
+
+function logout() {
+  sessionStorage.removeItem('adminKey');
+  ADMIN_KEY = '';
+  DATA = { events: [], requests: [], accounts: [] };
+  window.location.href = '/';
+}
+
+// ── Navigation ────────────────────────────────────────────────────────────
+const SECTION_TITLES = {
+  dashboard: 'Dashboard',
+  accounts: 'Comptes DJ',
+  events: 'Événements',
+  requests: 'Demandes',
+  database: 'Base de données'
+};
+
+function showSection(name) {
+  document.querySelectorAll('.section').forEach(s => s.classList.remove('active'));
+  document.getElementById('sec' + name.charAt(0).toUpperCase() + name.slice(1)).classList.add('active');
+  document.querySelectorAll('.sidebar-link').forEach(l => l.classList.remove('active'));
+  event.currentTarget.classList.add('active');
+  document.getElementById('sectionTitle').textContent = SECTION_TITLES[name];
+  if (name === 'dashboard') renderDashboard();
+  if (name === 'accounts') renderAccounts();
+  if (name === 'events') renderEvents();
+  if (name === 'requests') renderRequests();
+}
+
+// ── Data fetching ─────────────────────────────────────────────────────────
+async function adminFetch(path, opts = {}) {
+  const headers = { 'Content-Type': 'application/json', 'X-Admin-Key': ADMIN_KEY, ...(opts.headers || {}) };
+  const res = await fetch(API + path, { ...opts, headers });
+  return res.json();
+}
+
+async function refreshAll() {
+  const [evRes, reqRes, accRes] = await Promise.all([
+    adminFetch('/events'),
+    adminFetch('/requests'),
+    adminFetch('/accounts')
+  ]);
+  DATA.events   = evRes.success  ? evRes.data  : [];
+  DATA.requests = reqRes.success ? reqRes.data : [];
+  DATA.accounts = accRes.success ? accRes.data : [];
+  renderDashboard();
+  renderAccounts();
+  renderEvents();
+  renderRequests();
+  populateEventFilter();
+}
+
+// ── Dashboard ─────────────────────────────────────────────────────────────
+function renderDashboard() {
+  document.getElementById('stEvents').textContent   = DATA.events.length;
+  document.getElementById('stRequests').textContent = DATA.requests.length;
+  document.getElementById('stPending').textContent  = DATA.requests.filter(r => r.status === 'pending').length;
+  document.getElementById('stAccounts').textContent = DATA.accounts.length;
+
+  const recent = [...DATA.requests].sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp)).slice(0, 10);
+  const container = document.getElementById('recentActivity');
+  if (!recent.length) {
+    container.innerHTML = '<div class="empty"><div class="ico">🎵</div><p>Aucune demande</p></div>';
+    return;
+  }
+  container.innerHTML = `<table><thead><tr><th>Chanson</th><th>Artiste</th><th>Demandé par</th><th>Événement</th><th>Statut</th><th>Date</th></tr></thead><tbody>
+    ${recent.map(r => {
+      const ev = DATA.events.find(e => e.id === r.eventId);
+      const d = new Date(r.timestamp);
+      const date = d.toLocaleDateString('fr-FR') + ' ' + d.toLocaleTimeString('fr-FR', {hour:'2-digit',minute:'2-digit'});
+      const badge = r.status === 'pending' ? '<span class="badge badge-amber">En attente</span>' : '<span class="badge badge-green">Jouée</span>';
+      return `<tr><td style="font-weight:600">${esc(r.songTitle)}</td><td style="color:var(--muted)">${esc(r.artist)}</td><td>${esc(r.userName)}</td><td style="font-size:12px;color:var(--muted)">${ev ? esc(ev.name) : '—'}</td><td>${badge}</td><td style="font-size:12px;color:var(--muted)">${date}</td></tr>`;
+    }).join('')}
+  </tbody></table>`;
+}
+
+// ── Accounts ──────────────────────────────────────────────────────────────
+function renderAccounts() {
+  const c = document.getElementById('accountsTable');
+  if (!DATA.accounts.length) {
+    c.innerHTML = '<div class="empty"><div class="ico">👥</div><p>Aucun compte DJ</p></div>';
+    return;
+  }
+  c.innerHTML = `<table><thead><tr><th>Identifiant</th><th>Nom d'affichage</th><th>Statut</th><th>Créé le</th><th>Actions</th></tr></thead><tbody>
+    ${DATA.accounts.map(a => {
+      const badge = a.status === 'active' ? '<span class="badge badge-green">Actif</span>' : '<span class="badge badge-red">Inactif</span>';
+      const d = new Date(a.created_at);
+      const date = isNaN(d) ? '—' : d.toLocaleDateString('fr-FR');
+      return `<tr>
+        <td style="font-weight:600;font-family:monospace">${esc(a.username)}</td>
+        <td>${esc(a.display_name || '—')}</td>
+        <td>${badge}</td>
+        <td style="font-size:12px;color:var(--muted)">${date}</td>
+        <td><div class="actions">
+          <button class="btn btn-ghost btn-sm" onclick="openAccountModal('${a.id}')">✏️ Modifier</button>
+          <button class="btn btn-danger btn-sm" onclick="deleteAccount('${a.id}','${esc(a.username)}')">🗑</button>
+        </div></td>
+      </tr>`;
+    }).join('')}
+  </tbody></table>`;
+}
+
+function openAccountModal(id = null) {
+  editingAccountId = id;
+  const form = document.getElementById('accountForm');
+  form.reset();
+  if (id) {
+    const acc = DATA.accounts.find(a => a.id === id);
+    if (!acc) return;
+    document.getElementById('modalTitle').textContent = 'Modifier le compte';
+    document.getElementById('modalSaveTxt').textContent = 'Mettre à jour';
+    document.getElementById('fDisplayName').value = acc.display_name || '';
+    document.getElementById('fUsername').value = acc.username;
+    document.getElementById('fPassword').value = '';
+    document.getElementById('fStatus').value = acc.status;
+  } else {
+    document.getElementById('modalTitle').textContent = 'Nouveau compte DJ';
+    document.getElementById('modalSaveTxt').textContent = 'Créer le compte';
+  }
+  document.getElementById('accountModal').classList.remove('hidden');
+}
+
+function closeAccountModal() { document.getElementById('accountModal').classList.add('hidden'); }
+function closeModal(e) { if (e.target === document.getElementById('accountModal')) closeAccountModal(); }
+
+async function saveAccount() {
+  const btn = document.getElementById('modalSaveBtn');
+  const txt = document.getElementById('modalSaveTxt');
+  const spin = document.getElementById('modalSaveSpin');
+  const username = document.getElementById('fUsername').value.trim();
+  const password = document.getElementById('fPassword').value.trim();
+  const displayName = document.getElementById('fDisplayName').value.trim();
+  const status = document.getElementById('fStatus').value;
+  if (!username) { toast('Identifiant requis', 'error'); return; }
+  if (!editingAccountId && !password) { toast('Mot de passe requis', 'error'); return; }
+  btn.disabled = true; txt.classList.add('hidden'); spin.classList.remove('hidden');
+  try {
+    let res;
+    if (editingAccountId) {
+      const body = { username, displayName, status };
+      if (password) body.password = password;
+      res = await adminFetch('/accounts/' + editingAccountId, { method: 'PUT', body: JSON.stringify(body) });
+    } else {
+      res = await adminFetch('/accounts', { method: 'POST', body: JSON.stringify({ username, password, displayName, status }) });
+    }
+    if (res.success) {
+      toast(editingAccountId ? 'Compte mis à jour' : 'Compte créé', 'success');
+      closeAccountModal();
+      await refreshAll();
+    } else {
+      toast(res.error || 'Erreur', 'error');
+    }
+  } catch(err) { toast('Erreur réseau', 'error'); }
+  btn.disabled = false; txt.classList.remove('hidden'); spin.classList.add('hidden');
+}
+
+async function deleteAccount(id, username) {
+  if (!confirm(`Supprimer le compte "${username}" ?`)) return;
+  const res = await adminFetch('/accounts/' + id, { method: 'DELETE' });
+  if (res.success) { toast('Compte supprimé', 'success'); await refreshAll(); }
+  else toast(res.error || 'Erreur', 'error');
+}
+
+// ── Events ────────────────────────────────────────────────────────────────
+function renderEvents() {
+  const c = document.getElementById('eventsTable');
+  if (!DATA.events.length) {
+    c.innerHTML = '<div class="empty"><div class="ico">🎉</div><p>Aucun événement</p></div>';
+    return;
+  }
+  const statusBadge = s => ({
+    active:      '<span class="badge badge-green">Actif</span>',
+    preparation: '<span class="badge badge-amber">Préparation</span>',
+    completed:   '<span class="badge badge-muted">Terminé</span>',
+    cancelled:   '<span class="badge badge-red">Annulé</span>'
+  }[s] || `<span class="badge badge-muted">${s}</span>`);
+
+  c.innerHTML = `<table><thead><tr><th>Nom</th><th>Type</th><th>Date</th><th>Lieu</th><th>Statut</th><th>Demandes</th><th>Actions</th></tr></thead><tbody>
+    ${DATA.events.map(ev => {
+      const d = ev.date ? new Date(ev.date).toLocaleDateString('fr-FR', {day:'2-digit',month:'2-digit',year:'numeric',hour:'2-digit',minute:'2-digit'}) : '—';
+      const count = DATA.requests.filter(r => r.eventId === ev.id).length;
+      return `<tr>
+        <td style="font-weight:600">${esc(ev.name)}</td>
+        <td style="color:var(--muted)">${esc(ev.type || '—')}</td>
+        <td style="font-size:12px;color:var(--muted)">${d}</td>
+        <td style="font-size:12px;color:var(--muted)">${esc(ev.location || '—')}</td>
+        <td>${statusBadge(ev.status)}</td>
+        <td><span class="badge badge-purple">${count}</span></td>
+        <td><button class="btn btn-danger btn-sm" onclick="deleteEvent('${ev.id}','${esc(ev.name)}')">🗑 Supprimer</button></td>
+      </tr>`;
+    }).join('')}
+  </tbody></table>`;
+}
+
+async function deleteEvent(id, name) {
+  if (!confirm(`Supprimer l'événement "${name}" et toutes ses demandes ?`)) return;
+  const res = await adminFetch('/events/' + id, { method: 'DELETE' });
+  if (res.success) { toast('Événement supprimé', 'success'); await refreshAll(); }
+  else toast(res.error || 'Erreur', 'error');
+}
+
+// ── Requests ──────────────────────────────────────────────────────────────
+function populateEventFilter() {
+  const sel = document.getElementById('reqEventFilter');
+  const current = sel.value;
+  sel.innerHTML = '<option value="">🎉 Tous les événements</option>' +
+    DATA.events.map(ev => `<option value="${ev.id}" ${current === ev.id ? 'selected' : ''}>${esc(ev.name)}</option>`).join('');
+}
+
+function renderRequests() {
+  const eventId = document.getElementById('reqEventFilter').value;
+  const status  = document.getElementById('reqStatusFilter').value;
+  let list = DATA.requests;
+  if (eventId) list = list.filter(r => r.eventId === eventId);
+  if (status)  list = list.filter(r => r.status === status);
+  list = [...list].sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
+
+  const ev = eventId ? DATA.events.find(e => e.id === eventId) : null;
+  document.getElementById('reqTableTitle').textContent =
+    ev ? `Demandes — ${ev.name} (${list.length})` : `Toutes les demandes (${list.length})`;
+
+  const c = document.getElementById('requestsTable');
+  if (!list.length) {
+    c.innerHTML = '<div class="empty"><div class="ico">🎵</div><p>Aucune demande</p></div>';
+    return;
+  }
+  c.innerHTML = `<table><thead><tr><th>#</th><th>Chanson</th><th>Artiste</th><th>Demandé par</th>${!eventId ? '<th>Événement</th>' : ''}<th>Statut</th><th>Date</th><th>Actions</th></tr></thead><tbody>
+    ${list.map((r, i) => {
+      const evName = DATA.events.find(e => e.id === r.eventId);
+      const d = new Date(r.timestamp);
+      const date = isNaN(d) ? '—' : d.toLocaleDateString('fr-FR') + ' ' + d.toLocaleTimeString('fr-FR', {hour:'2-digit',minute:'2-digit'});
+      const badge = r.status === 'pending' ? '<span class="badge badge-amber">En attente</span>' : '<span class="badge badge-green">Jouée</span>';
+      return `<tr>
+        <td style="color:var(--muted)">#${i+1}</td>
+        <td style="font-weight:600">${esc(r.songTitle)}</td>
+        <td style="color:var(--muted)">${esc(r.artist)}</td>
+        <td>${esc(r.userName)}</td>
+        ${!eventId ? `<td style="font-size:12px;color:var(--muted)">${evName ? esc(evName.name) : '—'}</td>` : ''}
+        <td>${badge}</td>
+        <td style="font-size:12px;color:var(--muted)">${date}</td>
+        <td><button class="btn btn-danger btn-sm" onclick="deleteRequest('${r.id}')">🗑</button></td>
+      </tr>`;
+    }).join('')}
+  </tbody></table>`;
+}
+
+async function deleteRequest(id) {
+  if (!confirm('Supprimer cette demande ?')) return;
+  const res = await adminFetch('/requests/' + id, { method: 'DELETE' });
+  if (res.success) { toast('Demande supprimée', 'success'); DATA.requests = DATA.requests.filter(r => r.id !== id); renderRequests(); renderDashboard(); }
+  else toast(res.error || 'Erreur', 'error');
+}
+
+// ── Database / Export ─────────────────────────────────────────────────────
+function toCSV(headers, rows) {
+  return [headers.join(','), ...rows.map(r => r.map(v => `"${String(v ?? '').replace(/"/g, '""')}"`).join(','))].join('\n');
+}
+
+function downloadCSV(filename, csv) {
+  const a = document.createElement('a');
+  a.href = 'data:text/csv;charset=utf-8,' + encodeURIComponent(csv);
+  a.download = filename;
+  a.click();
+}
+
+function exportEventsCSV() {
+  downloadCSV('evenements.csv', toCSV(
+    ['ID','Nom','Type','Date','Lieu','Invités','Statut','Code','Créé le'],
+    DATA.events.map(e => [e.id, e.name, e.type, e.date, e.location, e.expectedGuests, e.status, e.shortCode, e.createdAt])
+  ));
+  toast('Export événements téléchargé', 'success');
+}
+
+function exportRequestsCSV() {
+  const eventId = document.getElementById('reqEventFilter')?.value || '';
+  const list = eventId ? DATA.requests.filter(r => r.eventId === eventId) : DATA.requests;
+  downloadCSV('demandes.csv', toCSV(
+    ['ID','Chanson','Artiste','Demandé par','Événement ID','Statut','Date'],
+    list.map(r => {
+      const ev = DATA.events.find(e => e.id === r.eventId);
+      return [r.id, r.songTitle, r.artist, r.userName, ev ? ev.name : r.eventId, r.status, r.timestamp];
+    })
+  ));
+  toast('Export demandes téléchargé', 'success');
+}
+
+function exportAccountsCSV() {
+  downloadCSV('comptes_dj.csv', toCSV(
+    ['ID','Identifiant','Nom affichage','Statut','Créé le'],
+    DATA.accounts.map(a => [a.id, a.username, a.display_name, a.status, a.created_at])
+  ));
+  toast('Export comptes téléchargé', 'success');
+}
+
+async function purgeRequests() {
+  if (!confirm('⚠️ Supprimer TOUTES les demandes ? Cette action est irréversible.')) return;
+  let ok = 0;
+  for (const r of DATA.requests) {
+    const res = await adminFetch('/requests/' + r.id, { method: 'DELETE' });
+    if (res.success) ok++;
+  }
+  toast(`${ok} demande(s) supprimée(s)`, 'success');
+  await refreshAll();
+}
+
+async function purgeEvents() {
+  if (!confirm('⚠️ Supprimer TOUS les événements et demandes associées ? Cette action est irréversible.')) return;
+  let ok = 0;
+  for (const ev of DATA.events) {
+    const res = await adminFetch('/events/' + ev.id, { method: 'DELETE' });
+    if (res.success) ok++;
+  }
+  toast(`${ok} événement(s) supprimé(s)`, 'success');
+  await refreshAll();
+}
+
+// ── Utils ─────────────────────────────────────────────────────────────────
+function esc(s) {
+  if (s == null) return '';
+  return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+
+function toast(msg, type = 'info') {
+  const t = document.createElement('div');
+  t.className = 'toast ' + type;
+  t.textContent = msg;
+  document.getElementById('toast').appendChild(t);
+  setTimeout(() => t.remove(), 3500);
+}
+</script>
+</body>
+</html>

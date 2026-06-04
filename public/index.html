@@ -308,8 +308,13 @@
     <!-- Requests tab -->
     <div id="tabRequests" class="hidden">
       <div class="topbar">
-        <div class="topbar-title">Toutes les demandes</div>
-        <div class="topbar-actions"><button class="btn btn-ghost btn-sm" onclick="DataSyncManager.syncData(true)">↻ Actualiser</button></div>
+        <div class="topbar-title">Demandes</div>
+        <div class="topbar-actions" style="display:flex;gap:8px;align-items:center">
+          <select id="djEventFilter" onchange="setDJEventFilter(this.value)" style="font-family:inherit;font-size:13px;font-weight:500;padding:7px 12px;border-radius:var(--r);border:1px solid var(--border);background:var(--surface);color:var(--text);cursor:pointer">
+            <option value="">🎉 Tous les événements</option>
+          </select>
+          <button class="btn btn-ghost btn-sm" onclick="DataSyncManager.syncData(true)">↻ Actualiser</button>
+        </div>
       </div>
       <div class="content" id="allRequestsContainer"></div>
     </div>
@@ -443,8 +448,8 @@
 <script>
 'use strict';
 
-const CONFIG={DJ:{username:'dj_admin',password:'EventManager2024!'},API:'/api',COOLDOWN:30000,MAX_PER_USER:5,SYNC_INTERVAL:15000};
-let STATE={user:null,currentPage:'login',events:[],requests:[],selectedEventId:null,userId:null,isOnline:true,lastRequest:0,selectedSong:null,searchTimer:null,cooldownTimer:null,lastSync:0,currentDJTab:'events'};
+const CONFIG={API:'/api',COOLDOWN:30000,MAX_PER_USER:5,SYNC_INTERVAL:15000};
+let STATE={user:null,currentPage:'login',events:[],requests:[],selectedEventId:null,userId:null,isOnline:true,lastRequest:0,selectedSong:null,searchTimer:null,cooldownTimer:null,lastSync:0,currentDJTab:'events',djFilterEventId:null};
 
 // ── API ─────────────────────────────────────────────────────────────────
 const API={
@@ -543,14 +548,37 @@ g('loginForm').addEventListener('submit',async e=>{
   const user=sanitize(g('username').value),pass=sanitize(g('password').value);
   const btn=g('loginBtn'),spin=g('loginBtnSpin'),txt=g('loginBtnText');
   btn.disabled=true;txt.classList.add('hidden');spin.classList.remove('hidden');
-  await delay(700);
-  if(user===CONFIG.DJ.username&&pass===CONFIG.DJ.password){
-    STATE.user={name:'DJ Admin'};localStorage.setItem('djLoggedIn','1');
-    showPage('dj');DataSyncManager.startAutoSync();notify('Bienvenue dans votre espace DJ !');
-  }else{
-    notify('Identifiants incorrects','error');
-    g('password').value='';g('username').classList.add('is-error');
-    setTimeout(()=>g('username').classList.remove('is-error'),600);
+  try{
+    // Vérifier super admin en premier
+    if(user.toLowerCase()==='superadmin'){
+      const res=await fetch(CONFIG.API+'/accounts?action=admin-login',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({username:user,password:pass})});
+      const data=await res.json();
+      if(data.success){
+        sessionStorage.setItem('adminKey',pass);
+        window.location.href='/admin.html';
+        return;
+      }else{
+        notify('Identifiants super admin incorrects','error');
+        g('password').value='';g('username').classList.add('is-error');
+        setTimeout(()=>g('username').classList.remove('is-error'),600);
+        btn.disabled=false;txt.classList.remove('hidden');spin.classList.add('hidden');
+        return;
+      }
+    }
+    // Sinon login DJ normal
+    const res=await fetch(CONFIG.API+'/accounts?action=login',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({username:user,password:pass})});
+    const data=await res.json();
+    if(data.success){
+      STATE.user={name:data.data.displayName||data.data.username,id:data.data.id};
+      localStorage.setItem('djLoggedIn','1');
+      showPage('dj');DataSyncManager.startAutoSync();notify('Bienvenue dans votre espace DJ !');
+    }else{
+      notify('Identifiants incorrects','error');
+      g('password').value='';g('username').classList.add('is-error');
+      setTimeout(()=>g('username').classList.remove('is-error'),600);
+    }
+  }catch(err){
+    notify('Erreur de connexion au serveur','error');
   }
   btn.disabled=false;txt.classList.remove('hidden');spin.classList.add('hidden');
 });
@@ -608,21 +636,39 @@ function renderEventsGrid(){
     </div>`;
   }).join('');
 }
+function populateDJEventFilter(){
+  const sel=g('djEventFilter');
+  if(!sel)return;
+  const active=STATE.events.filter(e=>e.status==='active'||e.status==='preparation');
+  const opts=active.map(ev=>`<option value="${ev.id}" ${STATE.djFilterEventId===ev.id?'selected':''}>${ev.name}</option>`).join('');
+  sel.innerHTML=`<option value="" ${!STATE.djFilterEventId?'selected':''}>🎉 Tous les événements</option>${opts}`;
+}
+function setDJEventFilter(val){
+  STATE.djFilterEventId=val||null;
+  renderAllRequests();
+}
 function renderAllRequests(){
+  populateDJEventFilter();
   const c=g('allRequestsContainer');
-  const pending=STATE.requests.filter(r=>r.status==='pending');
-  const played=STATE.requests.filter(r=>r.status==='played');
-  if(!STATE.requests.length){c.innerHTML=`<div class="empty"><div class="empty-icon">🎵</div><h3>Aucune demande</h3><p>Les demandes musicales apparaîtront ici.</p></div>`;return;}
+  const base=STATE.djFilterEventId?STATE.requests.filter(r=>r.eventId===STATE.djFilterEventId):STATE.requests;
+  const pending=base.filter(r=>r.status==='pending');
+  const played=base.filter(r=>r.status==='played');
+  const filterLabel=STATE.djFilterEventId?(STATE.events.find(e=>e.id===STATE.djFilterEventId)||{}).name||'':null;
+  if(!base.length){
+    c.innerHTML=`<div class="empty"><div class="empty-icon">🎵</div><h3>Aucune demande</h3><p>${filterLabel?'Aucune demande pour cet événement.':'Les demandes musicales apparaîtront ici.'}</p></div>`;
+    return;
+  }
+  const showEvent=!STATE.djFilterEventId;
   const tbl=(list,title,color)=>{
     if(!list.length)return'';
     return`<div style="margin-bottom:22px">
       <div class="section-head"><h2 style="color:${color}">${title} <span style="font-size:12px;font-weight:400;color:var(--muted)">(${list.length})</span></h2></div>
       <div style="background:var(--surface);border:1px solid var(--border);border-radius:var(--rl);overflow:hidden">
-        <table class="table"><thead><tr><th>#</th><th>Chanson</th><th>Artiste</th><th>Demandé par</th><th>Événement</th><th>Actions</th></tr></thead>
+        <table class="table"><thead><tr><th>#</th><th>Chanson</th><th>Artiste</th><th>Demandé par</th>${showEvent?'<th>Événement</th>':''}<th>Actions</th></tr></thead>
         <tbody>${list.map((r,i)=>{const ev=STATE.events.find(e=>e.id===r.eventId);return`<tr>
           <td><strong>#${i+1}</strong></td><td style="font-weight:600">${r.songTitle}</td>
           <td style="color:var(--muted)">${r.artist}</td><td>${r.userName}</td>
-          <td style="font-size:12px;color:var(--muted)">${ev?ev.name:r.eventId}</td>
+          ${showEvent?`<td style="font-size:12px;color:var(--muted)">${ev?ev.name:r.eventId}</td>`:''}
           <td><div style="display:flex;gap:5px">
             ${r.status==='pending'?`<button class="btn btn-success btn-sm" onclick="playRequest('${r.id}')">▶ Jouer</button>`:''}
             <button class="btn btn-ghost btn-sm" style="color:var(--danger)" onclick="removeRequest('${r.id}')">🗑</button>
