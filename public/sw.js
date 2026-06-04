@@ -1,65 +1,55 @@
-const CACHE = 'beatcue-v1';
-const OFFLINE_URLS = ['/participant.html'];
+const CACHE = 'beatcue-v2';
 
-// Installation — mise en cache des ressources essentielles
+// Installation — cache les ressources statiques
 self.addEventListener('install', e => {
   e.waitUntil(
-    caches.open(CACHE).then(c => c.addAll(OFFLINE_URLS))
+    caches.open(CACHE).then(c =>
+      c.addAll(['/participant.html', '/manifest.json'])
+        .catch(() => {}) // ignorer les erreurs de cache au premier install
+    )
   );
-  self.skipWaiting();
+  // PAS de skipWaiting — attendre que l'onglet soit fermé avant d'activer
 });
 
-// Activation — nettoyage des anciens caches
+// Activation — nettoyage des vieux caches seulement
 self.addEventListener('activate', e => {
   e.waitUntil(
     caches.keys().then(keys =>
       Promise.all(keys.filter(k => k !== CACHE).map(k => caches.delete(k)))
     )
+    // PAS de clients.claim() — évite le rechargement forcé
   );
-  self.clients.claim();
 });
 
-// Fetch — réseau en priorité, cache en fallback
+// Fetch — réseau d'abord, cache en fallback uniquement pour les ressources statiques
 self.addEventListener('fetch', e => {
-  // Ne pas intercepter les appels API
-  if (e.request.url.includes('/api/')) return;
+  const url = new URL(e.request.url);
+  // Ne jamais intercepter : API, iTunes, ressources externes
+  if (url.pathname.startsWith('/api/') || url.hostname !== location.hostname) return;
+  // Seulement pour les requêtes GET
+  if (e.request.method !== 'GET') return;
+
   e.respondWith(
     fetch(e.request)
       .then(res => {
-        if (res.ok) {
+        if (res && res.ok) {
           const clone = res.clone();
           caches.open(CACHE).then(c => c.put(e.request, clone));
         }
         return res;
       })
-      .catch(() => caches.match(e.request))
+      .catch(() => caches.match(e.request) || new Response('Hors ligne', {status: 503}))
   );
 });
 
-// Notifications push (si implémenté plus tard)
-self.addEventListener('push', e => {
-  if (!e.data) return;
-  const data = e.data.json();
-  e.waitUntil(
-    self.registration.showNotification(data.title || '🎵 DJ Music Request', {
-      body: data.body || '',
-      icon: '/manifest.json',
-      tag: 'beatcue',
-      renotify: true,
-      vibrate: [200, 100, 200]
-    })
-  );
-});
-
-// Message depuis la page — afficher une notif
+// Notifications via postMessage depuis la page
 self.addEventListener('message', e => {
   if (e.data?.type === 'NOTIFY') {
     self.registration.showNotification(e.data.title, {
       body: e.data.body,
       tag: 'beatcue-position',
       renotify: true,
-      vibrate: [200, 100, 200],
-      icon: '/manifest.json'
+      vibrate: [200, 100, 200]
     });
   }
 });
