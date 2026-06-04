@@ -473,9 +473,9 @@ function checkPositionNotifs(pending){
     const prevPos = STATE.lastPositions[r.id];
     if(prevPos !== undefined && prevPos !== pos){
       if(pos===1){
-        sendNotif('🎵 C'est ta chanson la prochaine !', `"${r.songTitle}" va être jouée !`);
+        sendNotif("🎵 Ta chanson est la prochaine !", `"${r.songTitle}" va être jouée !`);
       } else if(pos===2){
-        sendNotif('⏳ Plus qu'une chanson avant toi !', `"${r.songTitle}" arrive bientôt.`);
+        sendNotif("⏳ Bientôt ton tour !", `"${r.songTitle}" arrive bientôt.`);
       }
     }
     STATE.lastPositions[r.id] = pos;
@@ -573,9 +573,9 @@ function checkPositionNotifs(pending){
     const prevPos = STATE.lastPositions[r.id];
     if(prevPos !== undefined && prevPos !== pos){
       if(pos===1){
-        sendNotifViaSW('🎵 C'est ta chanson la prochaine !', '"'+r.songTitle+'" va être jouée !');
+        sendNotifViaSW("🎵 Ta chanson est la prochaine !", `"${r.songTitle}" va être jouée !`);
       } else if(pos===2){
-        sendNotifViaSW('⏳ Plus qu'une chanson avant toi !', '"'+r.songTitle+'" arrive bientôt.');
+        sendNotif("⏳ Bientôt ton tour !", `"${r.songTitle}" arrive bientôt.`);
       }
     }
     STATE.lastPositions[r.id] = pos;
