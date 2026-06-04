@@ -5,6 +5,12 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
   <title>Proposez une musique</title>
   <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🎵</text></svg>">
+  <link rel="manifest" href="/manifest.json">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="default">
+  <meta name="apple-mobile-web-app-title" content="BeatCue">
+  <meta name="theme-color" content="#4f46e5" id="themeColor">
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
   <style>
     *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
@@ -112,6 +118,25 @@
   </style>
 </head>
 <body>
+<!-- Bandeau installation PWA -->
+<div id="installBanner" class="hidden" style="background:var(--primary);color:#fff;padding:12px 16px;text-align:center;font-size:13px;font-weight:500;display:flex;align-items:center;justify-content:space-between;gap:12px;position:sticky;top:0;z-index:50">
+  <span>📲 Installe l'appli pour ne pas rater ta chanson !</span>
+  <div style="display:flex;gap:8px;flex-shrink:0">
+    <button onclick="installPWA()" style="background:#fff;color:var(--primary);border:none;border-radius:6px;padding:6px 12px;font-size:12px;font-weight:700;cursor:pointer;font-family:inherit">Installer</button>
+    <button onclick="document.getElementById('installBanner').classList.add('hidden')" style="background:rgba(255,255,255,.2);color:#fff;border:none;border-radius:6px;padding:6px 10px;font-size:12px;cursor:pointer;font-family:inherit">✕</button>
+  </div>
+</div>
+
+<!-- Bandeau iOS spécifique -->
+<div id="iosBanner" class="hidden" style="background:#1c1c1e;color:#fff;padding:14px 16px;font-size:12px;line-height:1.6;display:flex;align-items:flex-start;gap:12px">
+  <span style="font-size:24px;flex-shrink:0">📲</span>
+  <div>
+    <strong style="font-size:13px">Installe l'appli !</strong><br>
+    Appuie sur <strong>Partager</strong> <span style="font-size:14px">⬆️</span> puis <strong>"Sur l'écran d'accueil"</strong> pour recevoir les notifications même quand tu fermes Safari.
+    <button onclick="document.getElementById('iosBanner').classList.add('hidden')" style="display:block;margin-top:8px;background:rgba(255,255,255,.15);color:#fff;border:none;border-radius:6px;padding:5px 12px;font-size:11px;cursor:pointer;font-family:inherit">Compris</button>
+  </div>
+</div>
+
 <div class="wrap">
   <!-- Header -->
   <div class="header">
@@ -488,7 +513,81 @@ function renderQueue(){
   section.classList.remove('hidden');
 }
 
+// ── PWA ──────────────────────────────────────────────────────────────────
+let deferredInstallPrompt = null;
+
+// Enregistrer le Service Worker
+if('serviceWorker' in navigator){
+  navigator.serviceWorker.register('/sw.js').catch(()=>{});
+}
+
+// Intercepter le prompt d'installation (Android/Chrome)
+window.addEventListener('beforeinstallprompt', e => {
+  e.preventDefault();
+  deferredInstallPrompt = e;
+  // Afficher le bandeau seulement si pas encore installé
+  if(!window.matchMedia('(display-mode: standalone)').matches){
+    document.getElementById('installBanner').classList.remove('hidden');
+  }
+});
+
+function installPWA(){
+  if(!deferredInstallPrompt) return;
+  deferredInstallPrompt.prompt();
+  deferredInstallPrompt.userChoice.then(()=>{
+    deferredInstallPrompt = null;
+    document.getElementById('installBanner').classList.add('hidden');
+  });
+}
+
+// Afficher le bandeau iOS si pas encore installé
+function checkIOSInstall(){
+  const isIOS = /iphone|ipad|ipod/i.test(navigator.userAgent);
+  const isStandalone = window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone;
+  const dismissed = localStorage.getItem('iosBannerDismissed');
+  if(isIOS && !isStandalone && !dismissed){
+    document.getElementById('iosBanner').classList.remove('hidden');
+    document.getElementById('iosBanner').querySelector('button').addEventListener('click',()=>{
+      localStorage.setItem('iosBannerDismissed','1');
+    });
+  }
+}
+
+// Envoyer les notifications via le Service Worker (plus fiable)
+async function sendNotifViaSW(title, body){
+  if('serviceWorker' in navigator && navigator.serviceWorker.controller){
+    navigator.serviceWorker.controller.postMessage({type:'NOTIFY', title, body});
+  } else {
+    sendNotif(title, body); // fallback notification directe
+  }
+}
+
+// Surcharger checkPositionNotifs pour utiliser SW
+const _origCheck = checkPositionNotifs;
+// Remplacer sendNotif dans checkPositionNotifs par sendNotifViaSW
+// (redéfinir checkPositionNotifs)
+function checkPositionNotifs(pending){
+  const myRequests = pending.filter(r=>r.userId===STATE.userId);
+  myRequests.forEach(r=>{
+    const pos = pending.indexOf(r)+1;
+    const prevPos = STATE.lastPositions[r.id];
+    if(prevPos !== undefined && prevPos !== pos){
+      if(pos===1){
+        sendNotifViaSW('🎵 C'est ta chanson la prochaine !', '"'+r.songTitle+'" va être jouée !');
+      } else if(pos===2){
+        sendNotifViaSW('⏳ Plus qu'une chanson avant toi !', '"'+r.songTitle+'" arrive bientôt.');
+      }
+    }
+    STATE.lastPositions[r.id] = pos;
+  });
+  const pendingIds = new Set(pending.map(r=>r.id));
+  Object.keys(STATE.lastPositions).forEach(id=>{
+    if(!pendingIds.has(id)) delete STATE.lastPositions[id];
+  });
+}
+
 // ── Start ─────────────────────────────────────────────────────────────────
+checkIOSInstall();
 init();
 </script>
 </body>
