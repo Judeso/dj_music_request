@@ -196,7 +196,19 @@
     .result-title{font-size:13px;font-weight:600}
     .result-artist{font-size:12px;color:var(--muted)}
     .result-free{background:#f0f9ff}
-    .queue-card{margin-top:16px;padding:16px;border-radius:var(--rl);background:var(--primary);color:#fff;text-align:center}
+    .queue-card{margin-top:16px;border-radius:var(--rl);overflow:hidden;border:1px solid var(--border)}
+    .queue-header{background:var(--primary);color:#fff;padding:14px 16px;text-align:center}
+    .queue-list{background:var(--surface);max-height:260px;overflow-y:auto}
+    .queue-item{display:flex;align-items:center;gap:10px;padding:10px 14px;border-bottom:1px solid var(--border);font-size:13px}
+    .queue-item:last-child{border-bottom:none}
+    .queue-item.mine{background:rgba(79,70,229,.05)}
+    .queue-pos{font-size:11px;font-weight:700;color:var(--muted);width:20px;text-align:center;flex-shrink:0}
+    .queue-info{flex:1;min-width:0}
+    .queue-title{font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+    .queue-artist{font-size:11px;color:var(--muted)}
+    .vote-btn{background:var(--primary-lt);color:var(--primary);border:1px solid rgba(79,70,229,.3);border-radius:20px;padding:3px 9px;font-size:12px;font-weight:600;cursor:pointer;transition:all .15s;flex-shrink:0;font-family:inherit}
+    .vote-btn:hover{background:var(--primary);color:#fff}
+    .vote-btn.voted{background:var(--success-lt);color:var(--success);border-color:rgba(16,185,129,.3);cursor:default}
     .queue-num{font-size:42px;font-weight:800;line-height:1}
     .queue-label{font-size:13px;opacity:.85;margin-top:2px}
     .queue-sub{font-size:12px;opacity:.7;margin-top:5px}
@@ -373,9 +385,12 @@
       </form>
 
       <div id="queueCard" class="queue-card hidden">
-        <div class="queue-num" id="queueNum">—</div>
-        <div class="queue-label">Position dans la file d'attente</div>
-        <div class="queue-sub" id="queueSub"></div>
+        <div class="queue-header">
+          <div class="queue-num" id="queueNum">—</div>
+          <div class="queue-label">Ta position dans la file</div>
+          <div class="queue-sub" id="queueSub"></div>
+        </div>
+        <div class="queue-list" id="queueList"></div>
       </div>
     </div>
   </div>
@@ -651,8 +666,8 @@ function renderAllRequests(){
   populateDJEventFilter();
   const c=g('allRequestsContainer');
   const base=STATE.djFilterEventId?STATE.requests.filter(r=>r.eventId===STATE.djFilterEventId):STATE.requests;
-  const pending=base.filter(r=>r.status==='pending');
-  const played=base.filter(r=>r.status==='played');
+  const pending=base.filter(r=>r.status==='pending').sort((a,b)=>((b.votes||0)-(a.votes||0))||new Date(a.timestamp)-new Date(b.timestamp));
+  const played=base.filter(r=>r.status==='played').sort((a,b)=>new Date(b.playedAt||b.timestamp)-new Date(a.playedAt||a.timestamp));
   const filterLabel=STATE.djFilterEventId?(STATE.events.find(e=>e.id===STATE.djFilterEventId)||{}).name||'':null;
   if(!base.length){
     c.innerHTML=`<div class="empty"><div class="empty-icon">🎵</div><h3>Aucune demande</h3><p>${filterLabel?'Aucune demande pour cet événement.':'Les demandes musicales apparaîtront ici.'}</p></div>`;
@@ -664,10 +679,11 @@ function renderAllRequests(){
     return`<div style="margin-bottom:22px">
       <div class="section-head"><h2 style="color:${color}">${title} <span style="font-size:12px;font-weight:400;color:var(--muted)">(${list.length})</span></h2></div>
       <div style="background:var(--surface);border:1px solid var(--border);border-radius:var(--rl);overflow:hidden">
-        <table class="table"><thead><tr><th>#</th><th>Chanson</th><th>Artiste</th><th>Demandé par</th>${showEvent?'<th>Événement</th>':''}<th>Actions</th></tr></thead>
+        <table class="table"><thead><tr><th>#</th><th>Chanson</th><th>Artiste</th><th>Demandé par</th><th>Votes</th>${showEvent?'<th>Événement</th>':''}<th>Actions</th></tr></thead>
         <tbody>${list.map((r,i)=>{const ev=STATE.events.find(e=>e.id===r.eventId);return`<tr>
           <td><strong>#${i+1}</strong></td><td style="font-weight:600">${r.songTitle}</td>
           <td style="color:var(--muted)">${r.artist}</td><td>${r.userName}</td>
+          <td>${r.votes?`<span style="background:var(--primary-lt);color:var(--primary);border-radius:20px;padding:2px 8px;font-size:11px;font-weight:700">▲ ${r.votes}</span>`:''}</td>
           ${showEvent?`<td style="font-size:12px;color:var(--muted)">${ev?ev.name:r.eventId}</td>`:''}
           <td><div style="display:flex;gap:5px">
             ${r.status==='pending'?`<button class="btn btn-success btn-sm" onclick="playRequest('${r.id}')">▶ Jouer</button>`:''}
@@ -934,17 +950,27 @@ async function searchMusic(query){
   const drop=g('searchDropdown');
   let results=[...searchLocalDB(query)];
   try{
-    const res=await fetch(`https://musicbrainz.org/ws/2/recording?query=recording:"${encodeURIComponent(query)}"&fmt=json&limit=6`);
-    if(res.ok){const data=await res.json();data.recordings.forEach(rec=>{const title=rec.title;const artist=rec['artist-credit']?.[0]?.name||'Artiste inconnu';if(!results.some(r=>r.title.toLowerCase()===title.toLowerCase())&&results.length<8)results.push({title,artist});});}
+    const res=await fetch(`https://itunes.apple.com/search?term=${encodeURIComponent(query)}&media=music&entity=song&limit=8&country=fr`);
+    if(res.ok){
+      const data=await res.json();
+      data.results.forEach(t=>{
+        const title=t.trackName,artist=t.artistName,cover=t.artworkUrl60;
+        if(!results.some(r=>r.title.toLowerCase()===title.toLowerCase())&&results.length<10)
+          results.push({title,artist,cover});
+      });
+    }
   }catch(e){}
   drop.innerHTML='';
   results.slice(0,8).forEach(song=>{
     const d=document.createElement('div');d.className='search-result';
-    d.innerHTML=`<div class="result-title">${song.title}</div><div class="result-artist">par ${song.artist}</div>`;
+    const img=song.cover
+      ?`<img src="${song.cover}" style="width:38px;height:38px;border-radius:5px;object-fit:cover;flex-shrink:0">`
+      :`<div style="width:38px;height:38px;border-radius:5px;background:var(--primary-lt);display:flex;align-items:center;justify-content:center;flex-shrink:0;font-size:18px">🎵</div>`;
+    d.innerHTML=`<div style="display:flex;align-items:center;gap:10px">${img}<div><div class="result-title">${song.title}</div><div class="result-artist">${song.artist}</div></div></div>`;
     d.addEventListener('click',()=>pickSong(song));drop.appendChild(d);
   });
   const freeDiv=document.createElement('div');freeDiv.className='search-result result-free';
-  freeDiv.innerHTML=`<div class="result-title">✏️ "${query}"</div><div class="result-artist">Utiliser ce titre tel quel</div>`;
+  freeDiv.innerHTML=`<div style="display:flex;align-items:center;gap:10px"><div style="width:38px;height:38px;border-radius:5px;background:var(--bg);display:flex;align-items:center;justify-content:center;flex-shrink:0;font-size:18px">✏️</div><div><div class="result-title">"${query}"</div><div class="result-artist">Utiliser ce titre tel quel</div></div></div>`;
   freeDiv.addEventListener('click',()=>pickSong({title:query,artist:'Artiste à préciser'}));
   drop.appendChild(freeDiv);drop.classList.add('open');
 }
@@ -1029,16 +1055,45 @@ function startCooldown(seconds){
   STATE.cooldownTimer=setInterval(()=>{rem--;sec.textContent=rem;if(rem<=0){clearInterval(STATE.cooldownTimer);bar.classList.add('hidden');}},1000);
 }
 
+function getVotedSet(){try{return new Set(JSON.parse(localStorage.getItem('voted')||'[]'))}catch{return new Set()}}
+function saveVote(id){const s=getVotedSet();s.add(id);localStorage.setItem('voted',JSON.stringify([...s]));}
+async function voteRequest(id,btn){
+  const voted=getVotedSet();if(voted.has(id))return;
+  try{
+    const res=await fetch(`${CONFIG.API}/requests/${id}?action=vote`,{method:'POST',headers:{'Content-Type':'application/json'}});
+    const data=await res.json();
+    if(data.success){
+      saveVote(id);
+      const req=STATE.requests.find(r=>r.id===id);
+      if(req)req.votes=(req.votes||0)+1;
+      updateQueueCard();
+    }
+  }catch(e){}
+}
 function updateQueueCard(){
   const card=g('queueCard');if(!STATE.selectedEventId){card.classList.add('hidden');return;}
-  const userR=STATE.requests.filter(r=>r.userId===STATE.userId&&r.eventId===STATE.selectedEventId&&r.status==='pending');
-  if(!userR.length){card.classList.add('hidden');return;}
-  const evR=STATE.requests.filter(r=>r.eventId===STATE.selectedEventId&&r.status==='pending').sort((a,b)=>new Date(a.timestamp)-new Date(b.timestamp));
-  const first=userR.sort((a,b)=>new Date(a.timestamp)-new Date(b.timestamp))[0];
-  const pos=evR.findIndex(r=>r.id===first.id)+1;
-  g('queueNum').textContent=pos;g('queueSub').textContent=`${userR.length} demande${userR.length>1?'s':''} en attente`;
+  const allPend=STATE.requests.filter(r=>r.eventId===STATE.selectedEventId&&r.status==='pending')
+    .sort((a,b)=>((b.votes||0)-(a.votes||0))||new Date(a.timestamp)-new Date(b.timestamp));
+  const userR=allPend.filter(r=>r.userId===STATE.userId);
+  if(!allPend.length){card.classList.add('hidden');return;}
+  const first=userR.length?userR[0]:null;
+  const pos=first?allPend.findIndex(r=>r.id===first.id)+1:0;
+  g('queueNum').textContent=first?pos:'👀';
+  g('queueSub').textContent=first?`${userR.length} de tes demandes · ${allPend.length} en file`:`${allPend.length} demande${allPend.length>1?'s':''} en attente`;
+  const voted=getVotedSet();
+  g('queueList').innerHTML=allPend.slice(0,10).map((r,i)=>{
+    const ismine=r.userId===STATE.userId;
+    const hasVoted=voted.has(r.id)||ismine;
+    const voteLabel=hasVoted?`✓ ${r.votes||0}`:`▲ ${r.votes||0}`;
+    return`<div class="queue-item${ismine?' mine':''}">
+      <div class="queue-pos">#${i+1}</div>
+      <div class="queue-info"><div class="queue-title">${esc(r.songTitle)}</div><div class="queue-artist">${esc(r.artist)}${ismine?' · <strong>toi</strong>':''}</div></div>
+      <button class="vote-btn${hasVoted?' voted':''}" onclick="voteRequest('${r.id}',this)" ${hasVoted?'disabled':''}>${voteLabel}</button>
+    </div>`;
+  }).join('');
   card.classList.remove('hidden');
 }
+function esc(s){return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');}
 
 // ── Init ───────────────────────────────────────────────────────────────────
 async function init(){

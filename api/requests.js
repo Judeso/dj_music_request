@@ -12,7 +12,8 @@ async function ensureTable() {
       status     TEXT DEFAULT 'pending',
       timestamp  TEXT,
       played_at  TEXT,
-      user_agent TEXT
+      user_agent TEXT,
+      votes      INTEGER DEFAULT 0
     )
   `;
 }
@@ -36,7 +37,8 @@ function toRow(row) {
     status:    row.status,
     timestamp: row.timestamp,
     playedAt:  row.played_at,
-    userAgent: row.user_agent
+    userAgent: row.user_agent,
+    votes:     row.votes ?? 0
   };
 }
 
@@ -65,6 +67,18 @@ export default async function handler(req, res) {
     const parts     = req.url.split('?')[0].split('/').filter(Boolean);
     const last      = parts[parts.length - 1];
     const requestId = (last !== 'requests' && last !== '[id]') ? last : null;
+
+    // Migration votes
+    await sql`ALTER TABLE requests ADD COLUMN IF NOT EXISTS votes INTEGER DEFAULT 0`;
+
+    // — Vote sur une demande —
+    const url2 = new URL(req.url, 'http://localhost');
+    const action2 = url2.searchParams.get('action');
+    if (req.method === 'POST' && action2 === 'vote' && requestId) {
+      const [row] = await sql`UPDATE requests SET votes = COALESCE(votes,0)+1 WHERE id = ${requestId} RETURNING *`;
+      if (!row) return res.status(404).json({ success: false, error: 'Demande introuvable' });
+      return res.status(200).json({ success: true, data: toRow(row) });
+    }
 
     if (req.method === 'GET') {
       const rows = await sql`SELECT * FROM requests ORDER BY timestamp DESC`;
