@@ -361,13 +361,14 @@ async function init(){
 
   // Vérifier si l'utilisateur a un profil
   const profile = getProfile();
-  if(profile){
-    STATE.userName = profile.name;
-  } else {
-    // Première visite → inscription
+  if(!profile){
+    // Sauvegarder l'eventId de l'URL AVANT d'afficher l'inscription
+    const urlEv = new URLSearchParams(window.location.search).get('event');
+    if(urlEv){ STATE.eventId = urlEv; localStorage.setItem('lastEventId', urlEv); }
     showRegister();
     return;
   }
+  STATE.userName = profile.name;
 
   const urlEventId = new URLSearchParams(window.location.search).get('event');
   if(urlEventId){
