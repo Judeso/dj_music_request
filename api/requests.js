@@ -87,6 +87,18 @@ export default async function handler(req, res) {
 
     if (req.method === 'POST') {
       const body = await parseBody(req);
+      // Vérification cooldown 5min côté serveur
+      if (body.userId && body.eventId) {
+        const fiveMinAgo = new Date(Date.now() - 5 * 60 * 1000).toISOString();
+        const [{ count }] = await sql`
+          SELECT COUNT(*)::int AS count FROM requests
+          WHERE user_id = ${body.userId} AND event_id = ${body.eventId}
+          AND timestamp > ${fiveMinAgo}
+        `;
+        if (count > 0) {
+          return res.status(429).json({ success: false, error: 'Veuillez attendre 5 minutes entre chaque demande.' });
+        }
+      }
       const id   = crypto.randomUUID();
       const now  = new Date().toISOString();
       const [row] = await sql`

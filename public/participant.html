@@ -161,7 +161,7 @@
           <span id="submitSpin" class="btn-spinner hidden"></span>
         </button>
         <div id="cooldownBar" class="hidden">
-          <span id="cooldownTxt">Prochaine demande dans <strong id="cooldownSec">30</strong>s</span>
+          <span id="cooldownTxt">Prochaine demande dans <strong id="cooldownSec">300</strong>s</span>
           <div class="progress-bg"><div class="progress-fill" id="progressFill" style="width:100%"></div></div>
         </div>
       </form>
@@ -182,8 +182,7 @@
 
 <script>
 const API = '/api';
-const COOLDOWN = 30000;
-const MAX_PER_USER = 5;
+const COOLDOWN = 300000; // 5 minutes
 const SYNC_INTERVAL = 10000;
 
 let STATE = {
@@ -194,7 +193,8 @@ let STATE = {
   selectedSong: null,
   searchTimer: null,
   lastRequest: 0,
-  cooldownTimer: null
+  cooldownTimer: null,
+  lastPositions: {} // {requestId: position} pour détecter les changements
 };
 
 // ── Utils ─────────────────────────────────────────────────────────────────
@@ -371,7 +371,6 @@ g('requestForm').addEventListener('submit', async e=>{
     return;
   }
   const pending = STATE.requests.filter(r=>r.userId===STATE.userId&&r.eventId===STATE.eventId&&r.status==='pending');
-  if(pending.length>=MAX_PER_USER){ toast(`Maximum ${MAX_PER_USER} demandes en attente`,'warning'); return; }
   let song;
   if(STATE.selectedSong) song={songTitle:STATE.selectedSong.title, artist:STATE.selectedSong.artist};
   else if(songVal.includes(' – ')){const[t,a]=songVal.split(' – ');song={songTitle:t.trim(),artist:a.trim()};}
@@ -392,6 +391,7 @@ g('requestForm').addEventListener('submit', async e=>{
       g('songSearch').value=''; g('songSearch').style.borderColor=''; STATE.selectedSong=null;
       STATE.lastRequest=now;
       toast(`🎵 "${song.songTitle}" envoyée !`);
+      askNotifPermission();
       startCooldown();
       renderQueue();
       setTimeout(()=>g('songSearch').focus(),600);
@@ -428,11 +428,46 @@ async function voteRequest(id){
   }catch(e){}
 }
 
+// ── Notifications ────────────────────────────────────────────────────────
+function askNotifPermission(){
+  if('Notification' in window && Notification.permission==='default'){
+    Notification.requestPermission();
+  }
+}
+function sendNotif(title, body, icon){
+  if(!('Notification' in window)||Notification.permission!=='granted') return;
+  try{
+    const n = new Notification(title, {body, icon: icon||'', tag:'beatcue', renotify:true, vibrate:[200,100,200]});
+    setTimeout(()=>n.close(), 6000);
+  }catch(e){}
+}
+function checkPositionNotifs(pending){
+  const myRequests = pending.filter(r=>r.userId===STATE.userId);
+  myRequests.forEach(r=>{
+    const pos = pending.indexOf(r)+1;
+    const prevPos = STATE.lastPositions[r.id];
+    if(prevPos !== undefined && prevPos !== pos){
+      if(pos===1){
+        sendNotif('🎵 C'est ta chanson la prochaine !', `"${r.songTitle}" va être jouée !`);
+      } else if(pos===2){
+        sendNotif('⏳ Plus qu'une chanson avant toi !', `"${r.songTitle}" arrive bientôt.`);
+      }
+    }
+    STATE.lastPositions[r.id] = pos;
+  });
+  // Nettoyer les IDs qui ne sont plus en pending
+  const pendingIds = new Set(pending.map(r=>r.id));
+  Object.keys(STATE.lastPositions).forEach(id=>{
+    if(!pendingIds.has(id)) delete STATE.lastPositions[id];
+  });
+}
+
 function renderQueue(){
   if(!STATE.eventId) return;
   const pending = STATE.requests
     .filter(r=>r.eventId===STATE.eventId&&r.status==='pending')
     .sort((a,b)=>((b.votes||0)-(a.votes||0))||new Date(a.timestamp)-new Date(b.timestamp));
+  checkPositionNotifs(pending);
   const section = g('queueSection');
   if(!pending.length){ section.classList.add('hidden'); return; }
   const myFirst = pending.find(r=>r.userId===STATE.userId);
