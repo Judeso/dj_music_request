@@ -674,6 +674,7 @@ function renderDJView(){
   g('statRequests').textContent=STATE.requests.length;g('statUsers').textContent=users;
   if(STATE.currentDJTab==='events')renderEventsGrid();
   if(STATE.currentDJTab==='requests')renderAllRequests();
+  if(STATE.currentDJTab==='analytics'){populateAnalyticsFilter();renderAnalytics();}
 }
 function renderEventsGrid(){
   const grid=g('eventsGrid');
