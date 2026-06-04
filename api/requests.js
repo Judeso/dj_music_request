@@ -87,16 +87,17 @@ export default async function handler(req, res) {
 
     if (req.method === 'POST') {
       const body = await parseBody(req);
-      // Vérification cooldown 5min côté serveur
-      if (body.userId && body.eventId) {
+      // Vérification anti-spam : même chanson dans les 5 dernières minutes
+      if (body.userId && body.eventId && body.songTitle) {
         const fiveMinAgo = new Date(Date.now() - 5 * 60 * 1000).toISOString();
-        const [{ count }] = await sql`
+        const [{ count }] = await sql\`
           SELECT COUNT(*)::int AS count FROM requests
-          WHERE user_id = ${body.userId} AND event_id = ${body.eventId}
-          AND timestamp > ${fiveMinAgo}
-        `;
+          WHERE user_id = \${body.userId} AND event_id = \${body.eventId}
+          AND LOWER(song_title) = LOWER(\${body.songTitle})
+          AND timestamp > \${fiveMinAgo}
+        \`;
         if (count > 0) {
-          return res.status(429).json({ success: false, error: 'Veuillez attendre 5 minutes entre chaque demande.' });
+          return res.status(429).json({ success: false, error: 'Tu as déjà demandé cette chanson récemment.' });
         }
       }
       const id   = crypto.randomUUID();
