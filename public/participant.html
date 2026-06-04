@@ -1,0 +1,460 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+  <title>Proposez une musique</title>
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🎵</text></svg>">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+  <style>
+    *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+    :root{
+      --primary:#4f46e5;--primary-lt:rgba(79,70,229,.12);
+      --bg:#f5f6fa;--surface:#fff;--border:#e4e7ef;
+      --text:#1a1d27;--muted:#6b7280;
+      --success:#10b981;--success-lt:rgba(16,185,129,.12);
+      --danger:#ef4444;--warning:#f59e0b;
+      --r:10px;--rl:16px;
+      --sh:0 4px 20px rgba(0,0,0,.1);
+    }
+    body{font-family:'Inter',-apple-system,sans-serif;background:var(--bg);color:var(--text);min-height:100vh;font-size:14px;line-height:1.5}
+    @keyframes fadeUp{from{opacity:0;transform:translateY(16px)}to{opacity:1;transform:none}}
+    @keyframes spin{to{transform:rotate(360deg)}}
+    @keyframes pulse{0%,100%{opacity:1}50%{opacity:.4}}
+    .hidden{display:none!important}
+
+    /* Layout */
+    .wrap{max-width:480px;margin:0 auto;padding:20px 16px 40px}
+
+    /* Header */
+    .header{text-align:center;margin-bottom:24px;animation:fadeUp .4s ease}
+    .brand{display:inline-flex;align-items:center;gap:7px;font-size:12px;font-weight:600;color:var(--muted);margin-bottom:14px;letter-spacing:.3px}
+    .brand-dot{width:8px;height:8px;border-radius:50%;background:var(--primary)}
+    .header h1{font-size:26px;font-weight:800;line-height:1.2;margin-bottom:6px}
+    .header p{font-size:13px;color:var(--muted)}
+
+    /* Card */
+    .card{background:var(--surface);border-radius:var(--rl);padding:24px;box-shadow:var(--sh);border:1px solid var(--border)}
+
+    /* Loading */
+    #loadingState{text-align:center;padding:32px 0}
+    .spinner{width:36px;height:36px;border-radius:50%;border:3px solid var(--border);border-top-color:var(--primary);animation:spin .7s linear infinite;margin:0 auto 14px}
+    .loading-text{font-size:13px;color:var(--muted);animation:pulse 1.5s ease infinite}
+
+    /* Error */
+    #errorState{text-align:center;padding:24px 0}
+    .error-icon{font-size:40px;margin-bottom:12px}
+    .error-title{font-size:16px;font-weight:700;margin-bottom:6px}
+    .error-msg{font-size:13px;color:var(--muted)}
+
+    /* Event info banner */
+    #eventBanner{background:var(--primary-lt);border-radius:var(--r);padding:10px 14px;margin-bottom:18px;border-left:3px solid var(--primary);display:flex;align-items:center;gap:10px}
+    #eventBanner .ev-icon{font-size:20px}
+    #eventBanner .ev-name{font-weight:700;font-size:14px;color:var(--text)}
+    #eventBanner .ev-meta{font-size:11px;color:var(--muted);margin-top:1px}
+
+    /* Form */
+    .form-label{font-size:12px;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:.4px;margin-bottom:6px;display:block}
+    .form-group{margin-bottom:16px}
+    .form-hint{font-size:11px;color:var(--muted);margin-top:5px}
+
+    /* Search */
+    .search-wrap{position:relative}
+    .search-input{width:100%;padding:11px 40px 11px 14px;border:1.5px solid var(--border);border-radius:var(--r);font-size:14px;font-family:inherit;outline:none;background:var(--surface);color:var(--text);transition:border .15s}
+    .search-input:focus{border-color:var(--primary);box-shadow:0 0 0 3px var(--primary-lt)}
+    .search-icon{position:absolute;right:12px;top:50%;transform:translateY(-50%);font-size:16px;color:var(--muted);pointer-events:none}
+    .search-dropdown{position:absolute;top:calc(100% + 4px);left:0;right:0;z-index:200;background:var(--surface);border:1px solid var(--border);border-radius:var(--r);box-shadow:var(--sh);max-height:280px;overflow-y:auto;display:none}
+    .search-dropdown.open{display:block}
+    .search-result{padding:10px 14px;cursor:pointer;border-bottom:1px solid var(--border);transition:background .12s;display:flex;align-items:center;gap:10px}
+    .search-result:last-child{border-bottom:none}
+    .search-result:hover,.search-result:active{background:var(--bg)}
+    .result-title{font-weight:600;font-size:13px}
+    .result-artist{font-size:11px;color:var(--muted);margin-top:1px}
+
+    /* Name input */
+    .name-input{width:100%;padding:11px 14px;border:1.5px solid var(--border);border-radius:var(--r);font-size:14px;font-family:inherit;outline:none;background:var(--surface);color:var(--text);transition:border .15s}
+    .name-input:focus{border-color:var(--primary);box-shadow:0 0 0 3px var(--primary-lt)}
+
+    /* Submit */
+    .btn-submit{width:100%;padding:14px;background:var(--primary);color:#fff;border:none;border-radius:var(--r);font-size:15px;font-weight:700;font-family:inherit;cursor:pointer;transition:all .18s;display:flex;align-items:center;justify-content:center;gap:8px}
+    .btn-submit:hover:not(:disabled){background:#4338ca;box-shadow:0 4px 16px rgba(79,70,229,.4)}
+    .btn-submit:disabled{opacity:.5;cursor:not-allowed}
+    .btn-spinner{width:16px;height:16px;border-radius:50%;border:2px solid rgba(255,255,255,.3);border-top-color:#fff;animation:spin .7s linear infinite}
+
+    /* Cooldown */
+    #cooldownBar{margin-top:10px;text-align:center;font-size:12px;color:var(--muted)}
+    .progress-bg{height:4px;background:var(--border);border-radius:4px;margin-top:6px;overflow:hidden}
+    .progress-fill{height:100%;background:var(--primary);border-radius:4px;transition:width 1s linear}
+
+    /* Queue */
+    #queueSection{margin-top:20px;animation:fadeUp .3s ease}
+    .queue-header{background:var(--primary);color:#fff;border-radius:var(--r) var(--r) 0 0;padding:12px 16px;display:flex;align-items:center;justify-content:space-between}
+    .queue-pos-badge{font-size:22px;font-weight:800}
+    .queue-header-right{text-align:right;font-size:12px;opacity:.85}
+    .queue-list{background:var(--surface);border:1px solid var(--border);border-top:none;border-radius:0 0 var(--r) var(--r);overflow:hidden}
+    .queue-item{display:flex;align-items:center;gap:10px;padding:10px 14px;border-bottom:1px solid var(--border);font-size:13px}
+    .queue-item:last-child{border-bottom:none}
+    .queue-item.mine{background:var(--primary-lt)}
+    .queue-num{width:22px;font-size:11px;font-weight:700;color:var(--muted);flex-shrink:0;text-align:center}
+    .queue-info{flex:1;min-width:0}
+    .queue-title{font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+    .queue-artist{font-size:11px;color:var(--muted)}
+    .vote-btn{background:var(--primary-lt);color:var(--primary);border:1px solid rgba(79,70,229,.25);border-radius:20px;padding:3px 9px;font-size:11px;font-weight:700;cursor:pointer;font-family:inherit;flex-shrink:0;transition:all .15s}
+    .vote-btn:hover{background:var(--primary);color:#fff}
+    .vote-btn.voted{background:var(--success-lt);color:var(--success);border-color:rgba(16,185,129,.25);cursor:default}
+
+    /* Notif */
+    #toastContainer{position:fixed;bottom:20px;left:50%;transform:translateX(-50%);z-index:999;display:flex;flex-direction:column;gap:8px;align-items:center;pointer-events:none;width:90%;max-width:360px}
+    .toast{background:var(--surface);border:1px solid var(--border);border-radius:var(--r);padding:11px 16px;font-size:13px;font-weight:500;box-shadow:var(--sh);animation:fadeUp .3s ease;width:100%;text-align:center}
+    .toast.success{border-left:3px solid var(--success);color:var(--success)}
+    .toast.error{border-left:3px solid var(--danger);color:var(--danger)}
+    .toast.warning{border-left:3px solid var(--warning);color:var(--warning)}
+  </style>
+</head>
+<body>
+<div class="wrap">
+  <!-- Header -->
+  <div class="header">
+    <div class="brand"><div class="brand-dot" id="brandDot"></div><span id="brandName">DJ Event Manager</span></div>
+    <h1 id="headerTitle">Proposez une musique 🎵</h1>
+    <p id="headerSub">Proposez vos titres préférés au DJ en quelques secondes</p>
+  </div>
+
+  <!-- Card -->
+  <div class="card">
+    <!-- Loading -->
+    <div id="loadingState">
+      <div class="spinner"></div>
+      <div class="loading-text">Chargement de l'événement…</div>
+    </div>
+
+    <!-- Error -->
+    <div id="errorState" class="hidden">
+      <div class="error-icon">😕</div>
+      <div class="error-title" id="errorTitle">Événement introuvable</div>
+      <div class="error-msg" id="errorMsg">Ce lien n'est plus valide ou l'événement est terminé.</div>
+    </div>
+
+    <!-- Form -->
+    <div id="formState" class="hidden">
+      <div id="eventBanner">
+        <div class="ev-icon">🎉</div>
+        <div><div class="ev-name" id="eventName">—</div><div class="ev-meta" id="eventMeta">—</div></div>
+      </div>
+
+      <form id="requestForm">
+        <div class="form-group">
+          <label class="form-label">Rechercher une chanson</label>
+          <div class="search-wrap">
+            <input id="songSearch" type="text" class="search-input" placeholder="Titre ou artiste…" autocomplete="off" autocorrect="off" spellcheck="false">
+            <span class="search-icon">🔍</span>
+            <div class="search-dropdown" id="searchDropdown"></div>
+          </div>
+          <div class="form-hint">Tapez 2 lettres minimum pour voir des suggestions</div>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Votre prénom</label>
+          <input id="userName" type="text" class="name-input" placeholder="Ex : Marie" autocomplete="given-name" required>
+        </div>
+        <button type="submit" class="btn-submit" id="submitBtn">
+          <span id="submitTxt">🎵 Envoyer ma demande</span>
+          <span id="submitSpin" class="btn-spinner hidden"></span>
+        </button>
+        <div id="cooldownBar" class="hidden">
+          <span id="cooldownTxt">Prochaine demande dans <strong id="cooldownSec">30</strong>s</span>
+          <div class="progress-bg"><div class="progress-fill" id="progressFill" style="width:100%"></div></div>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Queue -->
+  <div id="queueSection" class="hidden">
+    <div class="queue-header">
+      <div><div class="queue-pos-badge" id="queuePos">—</div><div style="font-size:11px;opacity:.8">Ta position</div></div>
+      <div class="queue-header-right"><div id="queueCount">—</div><div>en attente</div></div>
+    </div>
+    <div class="queue-list" id="queueList"></div>
+  </div>
+</div>
+
+<div id="toastContainer"></div>
+
+<script>
+const API = '/api';
+const COOLDOWN = 30000;
+const MAX_PER_USER = 5;
+const SYNC_INTERVAL = 10000;
+
+let STATE = {
+  eventId: null,
+  event: null,
+  requests: [],
+  userId: null,
+  selectedSong: null,
+  searchTimer: null,
+  lastRequest: 0,
+  cooldownTimer: null
+};
+
+// ── Utils ─────────────────────────────────────────────────────────────────
+function g(id){return document.getElementById(id)}
+function esc(s){return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')}
+function toast(msg,type='success'){
+  const t=document.createElement('div');t.className='toast '+type;t.textContent=msg;
+  g('toastContainer').appendChild(t);
+  setTimeout(()=>{t.style.cssText='opacity:0;transition:opacity .3s';setTimeout(()=>t.remove(),300)},3500);
+}
+
+// ── Init ──────────────────────────────────────────────────────────────────
+async function init(){
+  // User ID persistant
+  STATE.userId = localStorage.getItem('uid') || ('u_'+Date.now()+'_'+Math.random().toString(36).slice(2,9));
+  localStorage.setItem('uid', STATE.userId);
+
+  // Event ID depuis URL
+  const params = new URLSearchParams(window.location.search);
+  STATE.eventId = params.get('event');
+
+  if(!STATE.eventId){
+    showError('Lien invalide', 'Aucun événement spécifié dans ce lien. Scannez à nouveau le QR code.');
+    return;
+  }
+
+  // Charger les données
+  try {
+    const [evRes, rqRes] = await Promise.all([
+      fetch(API+'/events').then(r=>r.json()),
+      fetch(API+'/requests').then(r=>r.json())
+    ]);
+
+    const events = evRes.success ? evRes.data : [];
+    STATE.requests = rqRes.success ? rqRes.data : [];
+
+    const ev = events.find(e=>e.id===STATE.eventId);
+    if(!ev){
+      showError('Événement introuvable', 'Ce lien QR ne correspond à aucun événement. Demandez un nouveau QR au DJ.');
+      return;
+    }
+
+    STATE.event = ev;
+    applyBranding(ev);
+    showForm(ev);
+    renderQueue();
+    // Auto-sync
+    setInterval(syncRequests, SYNC_INTERVAL);
+
+  } catch(err) {
+    showError('Erreur de connexion', 'Impossible de charger l\'événement. Vérifiez votre connexion et réessayez.');
+  }
+}
+
+// ── Branding ──────────────────────────────────────────────────────────────
+function applyBranding(ev){
+  const color = ev.primaryColor || '#4f46e5';
+  document.documentElement.style.setProperty('--primary', color);
+  document.documentElement.style.setProperty('--primary-lt', color+'1a');
+  if(ev.djName) g('brandName').textContent = ev.djName;
+  g('brandDot').style.background = color;
+  if(ev.welcomeMessage) g('headerTitle').textContent = ev.welcomeMessage;
+  if(ev.djName) g('headerSub').textContent = 'Soirée animée par '+ev.djName;
+  document.title = ev.name + ' — Demandes musicales';
+}
+
+// ── Show states ───────────────────────────────────────────────────────────
+function showError(title, msg){
+  g('loadingState').classList.add('hidden');
+  g('errorTitle').textContent = title;
+  g('errorMsg').textContent = msg;
+  g('errorState').classList.remove('hidden');
+}
+
+function showForm(ev){
+  g('loadingState').classList.add('hidden');
+  g('eventName').textContent = ev.name;
+  const d = ev.date ? new Date(ev.date) : null;
+  const dateStr = d ? d.toLocaleDateString('fr-FR',{weekday:'long',day:'numeric',month:'long'}) : '';
+  const loc = ev.location || '';
+  g('eventMeta').textContent = [dateStr, loc].filter(Boolean).join(' · ');
+  g('formState').classList.remove('hidden');
+  setupSearch();
+  g('songSearch').focus();
+}
+
+// ── Sync ──────────────────────────────────────────────────────────────────
+async function syncRequests(){
+  try{
+    const res = await fetch(API+'/requests').then(r=>r.json());
+    if(res.success){ STATE.requests = res.data; renderQueue(); }
+  }catch(e){}
+}
+
+// ── Music Search ──────────────────────────────────────────────────────────
+function setupSearch(){
+  const inp = g('songSearch'), drop = g('searchDropdown');
+  inp.addEventListener('input', function(){
+    const q = this.value.trim();
+    if(STATE.searchTimer) clearTimeout(STATE.searchTimer);
+    if(q.length<2){ drop.classList.remove('open'); STATE.selectedSong=null; return; }
+    drop.innerHTML = '<div class="search-result" style="color:var(--muted);justify-content:center"><span>🔍 Recherche…</span></div>';
+    drop.classList.add('open');
+    STATE.searchTimer = setTimeout(()=>searchMusic(q), 300);
+  });
+  document.addEventListener('click', e=>{ if(!inp.contains(e.target)&&!drop.contains(e.target)) drop.classList.remove('open'); });
+  inp.addEventListener('keydown', e=>{ if(e.key==='Enter'){e.preventDefault();const f=drop.querySelector('.search-result');if(f)f.click();} });
+}
+
+const LOCAL_DB=[
+  {title:'Bohemian Rhapsody',artist:'Queen'},{title:'Blinding Lights',artist:'The Weeknd'},
+  {title:'Shape of You',artist:'Ed Sheeran'},{title:'Bad Guy',artist:'Billie Eilish'},
+  {title:'Levitating',artist:'Dua Lipa'},{title:'As It Was',artist:'Harry Styles'},
+  {title:'Anti-Hero',artist:'Taylor Swift'},{title:'Flowers',artist:'Miley Cyrus'},
+  {title:'Alors on danse',artist:'Stromae'},{title:'Formidable',artist:'Stromae'},
+  {title:'La Vie en Rose',artist:'Édith Piaf'},{title:'Dernière Danse',artist:'Indila'},
+  {title:'Tout oublier',artist:'Angèle'},{title:'One More Time',artist:'Daft Punk'},
+  {title:'Titanium',artist:'David Guetta ft. Sia'},{title:'Perfect',artist:'Ed Sheeran'},
+  {title:'All of Me',artist:'John Legend'},{title:'Uptown Funk',artist:'Mark Ronson'},
+  {title:'Happy',artist:'Pharrell Williams'},{title:'September',artist:'Earth, Wind & Fire'},
+  {title:"Don't Stop Me Now",artist:'Queen'},{title:'Shut Up and Dance',artist:'Walk the Moon'},
+  {title:'Je veux',artist:'Zaz'},{title:'Wake Me Up',artist:'Avicii'},
+];
+
+async function searchMusic(q){
+  const drop = g('searchDropdown');
+  const ql = q.toLowerCase();
+  let results = LOCAL_DB.filter(s=>s.title.toLowerCase().includes(ql)||s.artist.toLowerCase().includes(ql)).slice(0,4);
+  try{
+    const res = await fetch(`https://itunes.apple.com/search?term=${encodeURIComponent(q)}&media=music&entity=song&limit=8&country=fr`);
+    if(res.ok){
+      const data = await res.json();
+      data.results.forEach(t=>{
+        if(!results.some(r=>r.title.toLowerCase()===t.trackName.toLowerCase())&&results.length<9)
+          results.push({title:t.trackName, artist:t.artistName, cover:t.artworkUrl60});
+      });
+    }
+  }catch(e){}
+  drop.innerHTML='';
+  results.forEach(song=>{
+    const d=document.createElement('div'); d.className='search-result';
+    const img = song.cover
+      ? `<img src="${song.cover}" style="width:38px;height:38px;border-radius:5px;object-fit:cover;flex-shrink:0">`
+      : `<div style="width:38px;height:38px;border-radius:5px;background:var(--primary-lt);display:flex;align-items:center;justify-content:center;flex-shrink:0;font-size:16px">🎵</div>`;
+    d.innerHTML=`${img}<div><div class="result-title">${esc(song.title)}</div><div class="result-artist">${esc(song.artist)}</div></div>`;
+    d.addEventListener('click',()=>pickSong(song));
+    drop.appendChild(d);
+  });
+  const free=document.createElement('div'); free.className='search-result';
+  free.innerHTML=`<div style="width:38px;height:38px;border-radius:5px;background:var(--bg);display:flex;align-items:center;justify-content:center;flex-shrink:0;font-size:16px">✏️</div><div><div class="result-title">"${esc(q)}"</div><div class="result-artist">Utiliser ce titre tel quel</div></div>`;
+  free.addEventListener('click',()=>pickSong({title:q,artist:'Artiste à préciser'}));
+  drop.appendChild(free);
+  drop.classList.add('open');
+}
+
+function pickSong(song){
+  STATE.selectedSong = song;
+  g('songSearch').value = song.title + (song.artist!=='Artiste à préciser'?' – '+song.artist:'');
+  g('songSearch').style.borderColor = 'var(--success)';
+  setTimeout(()=>g('songSearch').style.borderColor='', 1200);
+  g('searchDropdown').classList.remove('open');
+}
+
+// ── Submit ────────────────────────────────────────────────────────────────
+g('requestForm').addEventListener('submit', async e=>{
+  e.preventDefault();
+  const songVal = g('songSearch').value.trim();
+  const userName = g('userName').value.trim();
+  if(!songVal){ toast('Sélectionnez une chanson','error'); return; }
+  if(!userName){ toast('Entrez votre prénom','error'); return; }
+  const now = Date.now();
+  if(now - STATE.lastRequest < COOLDOWN){
+    toast(`Attendez encore ${Math.ceil((COOLDOWN-(now-STATE.lastRequest))/1000)}s`,'warning');
+    return;
+  }
+  const pending = STATE.requests.filter(r=>r.userId===STATE.userId&&r.eventId===STATE.eventId&&r.status==='pending');
+  if(pending.length>=MAX_PER_USER){ toast(`Maximum ${MAX_PER_USER} demandes en attente`,'warning'); return; }
+  let song;
+  if(STATE.selectedSong) song={songTitle:STATE.selectedSong.title, artist:STATE.selectedSong.artist};
+  else if(songVal.includes(' – ')){const[t,a]=songVal.split(' – ');song={songTitle:t.trim(),artist:a.trim()};}
+  else song={songTitle:songVal, artist:'Artiste à préciser'};
+  if(pending.find(r=>r.songTitle.toLowerCase()===song.songTitle.toLowerCase())){
+    toast('Tu as déjà demandé cette chanson','warning'); return;
+  }
+  const btn=g('submitBtn'); btn.disabled=true;
+  g('submitTxt').classList.add('hidden'); g('submitSpin').classList.remove('hidden');
+  try{
+    const res = await fetch(API+'/requests',{
+      method:'POST',
+      headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({eventId:STATE.eventId,...song,userName,userId:STATE.userId,timestamp:new Date().toISOString(),userAgent:navigator.userAgent.substring(0,100)})
+    }).then(r=>r.json());
+    if(res.success){
+      STATE.requests.push(res.data);
+      g('songSearch').value=''; g('songSearch').style.borderColor=''; STATE.selectedSong=null;
+      STATE.lastRequest=now;
+      toast(`🎵 "${song.songTitle}" envoyée !`);
+      startCooldown();
+      renderQueue();
+      setTimeout(()=>g('songSearch').focus(),600);
+    }else{ toast(res.error||'Erreur lors de l\'envoi','error'); }
+  }catch(err){ toast('Erreur réseau — réessayez','error'); }
+  btn.disabled=false; g('submitTxt').classList.remove('hidden'); g('submitSpin').classList.add('hidden');
+});
+
+// ── Cooldown ──────────────────────────────────────────────────────────────
+function startCooldown(){
+  const bar=g('cooldownBar'), fill=g('progressFill'), sec=g('cooldownSec');
+  bar.classList.remove('hidden'); fill.style.width='100%';
+  let rem=COOLDOWN/1000;
+  sec.textContent=rem;
+  STATE.cooldownTimer=setInterval(()=>{
+    rem--; sec.textContent=rem; fill.style.width=(rem/(COOLDOWN/1000)*100)+'%';
+    if(rem<=0){ clearInterval(STATE.cooldownTimer); bar.classList.add('hidden'); }
+  },1000);
+}
+
+// ── Queue ─────────────────────────────────────────────────────────────────
+function getVotedSet(){try{return new Set(JSON.parse(localStorage.getItem('voted')||'[]'))}catch{return new Set()}}
+function saveVote(id){const s=getVotedSet();s.add(id);localStorage.setItem('voted',JSON.stringify([...s]));}
+async function voteRequest(id){
+  const voted=getVotedSet(); if(voted.has(id)) return;
+  try{
+    const res=await fetch(`${API}/requests/${id}?action=vote`,{method:'POST',headers:{'Content-Type':'application/json'}}).then(r=>r.json());
+    if(res.success){
+      saveVote(id);
+      const r=STATE.requests.find(r=>r.id===id);
+      if(r) r.votes=(r.votes||0)+1;
+      renderQueue();
+    }
+  }catch(e){}
+}
+
+function renderQueue(){
+  if(!STATE.eventId) return;
+  const pending = STATE.requests
+    .filter(r=>r.eventId===STATE.eventId&&r.status==='pending')
+    .sort((a,b)=>((b.votes||0)-(a.votes||0))||new Date(a.timestamp)-new Date(b.timestamp));
+  const section = g('queueSection');
+  if(!pending.length){ section.classList.add('hidden'); return; }
+  const myFirst = pending.find(r=>r.userId===STATE.userId);
+  const myPos = myFirst ? pending.indexOf(myFirst)+1 : null;
+  const myCount = pending.filter(r=>r.userId===STATE.userId).length;
+  g('queuePos').textContent = myPos ? '#'+myPos : '👀';
+  g('queueCount').textContent = pending.length + ' demande'+(pending.length>1?'s':'');
+  const voted = getVotedSet();
+  g('queueList').innerHTML = pending.slice(0,10).map((r,i)=>{
+    const ismine = r.userId===STATE.userId;
+    const hasVoted = voted.has(r.id)||ismine;
+    return`<div class="queue-item${ismine?' mine':''}">
+      <div class="queue-num">#${i+1}</div>
+      <div class="queue-info"><div class="queue-title">${esc(r.songTitle)}</div><div class="queue-artist">${esc(r.artist)}${ismine?' · <strong>toi</strong>':''}</div></div>
+      <button class="vote-btn${hasVoted?' voted':''}" onclick="voteRequest('${r.id}')" ${hasVoted?'disabled':''}>${hasVoted?'✓':'▲'} ${r.votes||0}</button>
+    </div>`;
+  }).join('');
+  section.classList.remove('hidden');
+}
+
+// ── Start ─────────────────────────────────────────────────────────────────
+init();
+</script>
+</body>
+</html>
