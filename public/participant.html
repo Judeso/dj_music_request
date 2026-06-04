@@ -109,6 +109,23 @@
     .vote-btn:hover{background:var(--primary);color:#fff}
     .vote-btn.voted{background:var(--success-lt);color:var(--success);border-color:rgba(16,185,129,.25);cursor:default}
 
+    /* Welcome / rescan */
+    #welcomeState{padding:8px 0}
+    .welcome-title{font-size:16px;font-weight:700;margin-bottom:6px}
+    .welcome-sub{font-size:13px;color:var(--muted);margin-bottom:20px}
+    .last-event-card{background:var(--primary-lt);border:1.5px solid var(--primary);border-radius:var(--r);padding:14px;margin-bottom:16px;cursor:pointer;transition:all .15s}
+    .last-event-card:hover{background:var(--primary);color:#fff}
+    .last-event-card:hover .last-event-sub{color:rgba(255,255,255,.7)}
+    .last-event-name{font-weight:700;font-size:14px;color:var(--text)}
+    .last-event-sub{font-size:11px;color:var(--muted);margin-top:2px}
+    .divider-or{display:flex;align-items:center;gap:10px;margin:16px 0;color:var(--muted);font-size:12px}
+    .divider-or::before,.divider-or::after{content:'';flex:1;height:1px;background:var(--border)}
+    .code-input-wrap{display:flex;gap:8px}
+    .code-input{flex:1;padding:11px 14px;border:1.5px solid var(--border);border-radius:var(--r);font-size:15px;font-family:monospace;font-weight:600;letter-spacing:2px;text-transform:uppercase;outline:none;text-align:center}
+    .code-input:focus{border-color:var(--primary);box-shadow:0 0 0 3px var(--primary-lt)}
+    .btn-change{background:transparent;border:none;color:var(--muted);font-size:12px;font-family:inherit;cursor:pointer;padding:4px 8px;border-radius:6px;text-decoration:underline}
+    .btn-change:hover{color:var(--primary)}
+
     /* Notif */
     #toastContainer{position:fixed;bottom:20px;left:50%;transform:translateX(-50%);z-index:999;display:flex;flex-direction:column;gap:8px;align-items:center;pointer-events:none;width:90%;max-width:360px}
     .toast{background:var(--surface);border:1px solid var(--border);border-radius:var(--r);padding:11px 16px;font-size:13px;font-weight:500;box-shadow:var(--sh);animation:fadeUp .3s ease;width:100%;text-align:center}
@@ -153,6 +170,22 @@
       <div class="loading-text">Chargement de l'événement…</div>
     </div>
 
+    <!-- Welcome / Rescan -->
+    <div id="welcomeState" class="hidden">
+      <div class="welcome-title">📲 Rejoindre un événement</div>
+      <div class="welcome-sub">Entre le code de l'événement donné par le DJ</div>
+      <div id="lastEventCard" class="last-event-card hidden" onclick="loadLastEvent()">
+        <div class="last-event-name" id="lastEventName">—</div>
+        <div class="last-event-sub">Reprendre la dernière soirée →</div>
+      </div>
+      <div id="orDivider" class="divider-or hidden">ou entre un nouveau code</div>
+      <div class="code-input-wrap">
+        <input id="codeInput" type="text" class="code-input" placeholder="ABCD1234" maxlength="10" autocomplete="off" spellcheck="false">
+        <button class="btn-submit" style="width:auto;padding:11px 16px" onclick="joinByCode()">OK</button>
+      </div>
+      <div class="form-hint" style="text-align:center;margin-top:8px">Le code est affiché sur l'écran ou la carte du DJ</div>
+    </div>
+
     <!-- Error -->
     <div id="errorState" class="hidden">
       <div class="error-icon">😕</div>
@@ -162,6 +195,7 @@
 
     <!-- Form -->
     <div id="formState" class="hidden">
+      <button class="btn-change" onclick="showWelcome()" style="display:block;margin-bottom:8px">↩ Changer d'événement</button>
       <div id="eventBanner">
         <div class="ev-icon">🎉</div>
         <div><div class="ev-name" id="eventName">—</div><div class="ev-meta" id="eventMeta">—</div></div>
@@ -232,47 +266,80 @@ function toast(msg,type='success'){
 }
 
 // ── Init ──────────────────────────────────────────────────────────────────
+// ── Init ──────────────────────────────────────────────────────────────────
+let ALL_EVENTS = [];
+
 async function init(){
-  // User ID persistant
   STATE.userId = localStorage.getItem('uid') || ('u_'+Date.now()+'_'+Math.random().toString(36).slice(2,9));
   localStorage.setItem('uid', STATE.userId);
-
-  // Event ID depuis URL
-  const params = new URLSearchParams(window.location.search);
-  STATE.eventId = params.get('event');
-
-  if(!STATE.eventId){
-    showError('Lien invalide', 'Aucun événement spécifié dans ce lien. Scannez à nouveau le QR code.');
-    return;
+  const savedName = localStorage.getItem('userName');
+  if(savedName) setTimeout(()=>{ const n=g('userName'); if(n) n.value=savedName; }, 200);
+  const urlEventId = new URLSearchParams(window.location.search).get('event');
+  if(urlEventId){
+    STATE.eventId = urlEventId;
+    localStorage.setItem('lastEventId', urlEventId);
+    await loadEvent();
+  } else {
+    const lastId = localStorage.getItem('lastEventId');
+    if(lastId){ STATE.eventId = lastId; await loadEvent(); }
+    else showWelcome();
   }
+}
 
-  // Charger les données
+async function loadEvent(){
+  ['welcomeState','errorState','formState'].forEach(id=>{ const el=g(id); if(el) el.classList.add('hidden'); });
+  g('loadingState').classList.remove('hidden');
   try {
     const [evRes, rqRes] = await Promise.all([
       fetch(API+'/events').then(r=>r.json()),
       fetch(API+'/requests').then(r=>r.json())
     ]);
-
-    const events = evRes.success ? evRes.data : [];
+    ALL_EVENTS = evRes.success ? evRes.data : [];
     STATE.requests = rqRes.success ? rqRes.data : [];
-
-    const ev = events.find(e=>e.id===STATE.eventId);
-    if(!ev){
-      showError('Événement introuvable', 'Ce lien QR ne correspond à aucun événement. Demandez un nouveau QR au DJ.');
-      return;
-    }
-
+    const ev = ALL_EVENTS.find(e=>e.id===STATE.eventId);
+    if(!ev){ localStorage.removeItem('lastEventId'); showWelcome('Événement introuvable — entre un nouveau code.'); return; }
     STATE.event = ev;
+    localStorage.setItem('lastEventId', ev.id);
     applyBranding(ev);
     showForm(ev);
     renderQueue();
-    // Auto-sync
     setInterval(syncRequests, SYNC_INTERVAL);
-
   } catch(err) {
-    showError('Erreur de connexion', 'Impossible de charger l\'événement. Vérifiez votre connexion et réessayez.');
+    g('loadingState').classList.add('hidden');
+    showWelcome('Erreur de connexion — vérifie ta connexion.');
   }
 }
+
+function showWelcome(errMsg){
+  ['loadingState','errorState','formState'].forEach(id=>{ const el=g(id); if(el) el.classList.add('hidden'); });
+  g('welcomeState').classList.remove('hidden');
+  setupSearch();
+  const lastId = localStorage.getItem('lastEventId');
+  const lastEv = lastId && ALL_EVENTS.length ? ALL_EVENTS.find(e=>e.id===lastId) : null;
+  if(lastEv){ g('lastEventName').textContent=lastEv.name; g('lastEventCard').classList.remove('hidden'); g('orDivider').classList.remove('hidden'); }
+  else { g('lastEventCard').classList.add('hidden'); g('orDivider').classList.add('hidden'); }
+  if(errMsg) toast(errMsg,'error');
+}
+
+async function loadLastEvent(){
+  const lastId=localStorage.getItem('lastEventId'); if(!lastId) return;
+  STATE.eventId=lastId; await loadEvent();
+}
+
+async function joinByCode(){
+  const raw=g('codeInput').value.trim().toUpperCase(); if(!raw){ toast('Entre un code événement','warning'); return; }
+  const urlMatch=raw.match(/[?&]event=([a-f0-9-]{36})/i);
+  if(urlMatch){ STATE.eventId=urlMatch[1]; await loadEvent(); return; }
+  g('loadingState').classList.remove('hidden'); g('welcomeState').classList.add('hidden');
+  try {
+    const evRes=await fetch(API+'/events').then(r=>r.json());
+    ALL_EVENTS=evRes.success?evRes.data:[];
+    const ev=ALL_EVENTS.find(e=>(e.shortCode||'').toUpperCase()===raw);
+    if(!ev){ g('loadingState').classList.add('hidden'); g('welcomeState').classList.remove('hidden'); toast('Code introuvable','error'); return; }
+    STATE.eventId=ev.id; localStorage.setItem('lastEventId',ev.id); await loadEvent();
+  } catch(err) { g('loadingState').classList.add('hidden'); g('welcomeState').classList.remove('hidden'); toast('Erreur de connexion','error'); }
+}
+
 
 // ── Branding ──────────────────────────────────────────────────────────────
 function applyBranding(ev){
@@ -415,6 +482,7 @@ g('requestForm').addEventListener('submit', async e=>{
       STATE.requests.push(res.data);
       g('songSearch').value=''; g('songSearch').style.borderColor=''; STATE.selectedSong=null;
       STATE.lastRequest=now;
+      localStorage.setItem('userName', userName);
       toast(`🎵 "${song.songTitle}" envoyée !`);
       askNotifPermission();
       startCooldown();
