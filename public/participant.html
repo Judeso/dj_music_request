@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
-  <title>Proposez une musique</title>
+  <title>BeatCue</title>
   <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🎵</text></svg>">
   <link rel="manifest" href="/manifest.json">
   <meta name="mobile-web-app-capable" content="yes">
@@ -109,6 +109,22 @@
     .vote-btn:hover{background:var(--primary);color:#fff}
     .vote-btn.voted{background:var(--success-lt);color:var(--success);border-color:rgba(16,185,129,.25);cursor:default}
 
+    /* Inscription */
+    #registerState{padding:8px 0;text-align:center}
+    .register-icon{font-size:48px;margin-bottom:16px}
+    .register-title{font-size:20px;font-weight:800;margin-bottom:6px}
+    .register-sub{font-size:13px;color:var(--muted);margin-bottom:24px}
+    .big-input{width:100%;padding:14px;border:2px solid var(--border);border-radius:var(--r);font-size:18px;font-family:inherit;font-weight:600;text-align:center;outline:none;transition:border .15s}
+    .big-input:focus{border-color:var(--primary);box-shadow:0 0 0 3px var(--primary-lt)}
+    /* Profil utilisateur */
+    .user-chip{display:inline-flex;align-items:center;gap:8px;background:var(--primary-lt);border:1px solid var(--primary);border-radius:20px;padding:6px 12px;font-size:13px;font-weight:600;color:var(--primary);margin-bottom:12px}
+    .user-chip-edit{background:none;border:none;color:var(--muted);cursor:pointer;font-size:11px;font-family:inherit;padding:0;text-decoration:underline}
+    /* Fin d'event */
+    #endState{text-align:center;padding:24px 0}
+    .end-icon{font-size:52px;margin-bottom:12px}
+    .end-title{font-size:20px;font-weight:800;margin-bottom:6px}
+    .end-sub{font-size:13px;color:var(--muted);margin-bottom:20px}
+
     /* Welcome / rescan */
     #welcomeState{padding:8px 0}
     .welcome-title{font-size:16px;font-weight:700;margin-bottom:6px}
@@ -157,7 +173,7 @@
 <div class="wrap">
   <!-- Header -->
   <div class="header">
-    <div class="brand"><div class="brand-dot" id="brandDot"></div><span id="brandName">DJ Event Manager</span></div>
+    <div class="brand"><div class="brand-dot" id="brandDot"></div><span id="brandName">BeatCue</span></div>
     <h1 id="headerTitle">Proposez une musique 🎵</h1>
     <p id="headerSub">Proposez vos titres préférés au DJ en quelques secondes</p>
   </div>
@@ -168,6 +184,27 @@
     <div id="loadingState">
       <div class="spinner"></div>
       <div class="loading-text">Chargement de l'événement…</div>
+    </div>
+
+    <!-- Inscription (première visite) -->
+    <div id="registerState" class="hidden">
+      <div class="register-icon">🎵</div>
+      <div class="register-title">Bienvenue sur BeatCue !</div>
+      <div class="register-sub">Comment tu t'appelles ? Tu n'auras plus à le ressaisir.</div>
+      <input id="registerName" type="text" class="big-input" placeholder="Ton prénom" maxlength="30" autocomplete="given-name" onkeydown="if(event.key==='Enter')saveProfile()">
+      <button class="btn-submit" style="margin-top:14px" onclick="saveProfile()">
+        C'est parti 🎉
+      </button>
+    </div>
+
+    <!-- Fin d'événement -->
+    <div id="endState" class="hidden">
+      <div class="end-icon">🎶</div>
+      <div class="end-title">La soirée est terminée !</div>
+      <div class="end-sub" id="endMsg">Merci d'avoir été là. À bientôt !</div>
+      <button class="btn-submit" style="margin-top:4px" onclick="showWelcome()">
+        Rejoindre un autre événement
+      </button>
     </div>
 
     <!-- Welcome / Rescan -->
@@ -195,7 +232,10 @@
 
     <!-- Form -->
     <div id="formState" class="hidden">
-      <button class="btn-change" onclick="showWelcome()" style="display:block;margin-bottom:8px">↩ Changer d'événement</button>
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px">
+        <div class="user-chip">👤 <span id="userChipName">—</span> <button class="user-chip-edit" onclick="editProfile()">modifier</button></div>
+        <button class="btn-change" onclick="showWelcome()">↩ Autre event</button>
+      </div>
       <div id="eventBanner">
         <div class="ev-icon">🎉</div>
         <div><div class="ev-name" id="eventName">—</div><div class="ev-meta" id="eventMeta">—</div></div>
@@ -211,10 +251,7 @@
           </div>
           <div class="form-hint">Tapez 2 lettres minimum pour voir des suggestions</div>
         </div>
-        <div class="form-group">
-          <label class="form-label">Votre prénom</label>
-          <input id="userName" type="text" class="name-input" placeholder="Ex : Marie" autocomplete="given-name" required>
-        </div>
+        <input type="hidden" id="userName">
         <button type="submit" class="btn-submit" id="submitBtn">
           <span id="submitTxt">🎵 Envoyer ma demande</span>
           <span id="submitSpin" class="btn-spinner hidden"></span>
@@ -247,13 +284,15 @@ const SYNC_INTERVAL = 10000;
 let STATE = {
   eventId: null,
   event: null,
+  eventStatus: null,
   requests: [],
   userId: null,
+  userName: null,
   selectedSong: null,
   searchTimer: null,
   lastRequest: 0,
   cooldownTimer: null,
-  lastPositions: {} // {requestId: position} pour détecter les changements
+  lastPositions: {}
 };
 
 // ── Utils ─────────────────────────────────────────────────────────────────
@@ -269,11 +308,67 @@ function toast(msg,type='success'){
 // ── Init ──────────────────────────────────────────────────────────────────
 let ALL_EVENTS = [];
 
+// ── Profil utilisateur ────────────────────────────────────────────────────
+function getProfile(){ try{ return JSON.parse(localStorage.getItem('beatcue_profile')||'null'); }catch{ return null; } }
+function saveProfileData(name){ localStorage.setItem('beatcue_profile', JSON.stringify({name, userId: STATE.userId, createdAt: new Date().toISOString()})); }
+
+function saveProfile(){
+  const name = (g('registerName')?.value || '').trim();
+  if(!name){ toast('Entre ton prénom', 'warning'); return; }
+  saveProfileData(name);
+  STATE.userName = name;
+  // Continuer vers welcome ou l'event mémorisé
+  const lastId = localStorage.getItem('lastEventId');
+  if(lastId){ STATE.eventId = lastId; loadEvent(); } else showWelcome();
+}
+
+function editProfile(){
+  localStorage.removeItem('beatcue_profile');
+  STATE.userName = null;
+  showRegister();
+}
+
+function showRegister(){
+  ['loadingState','welcomeState','errorState','formState','endState'].forEach(id=>{ const el=g(id); if(el) el.classList.add('hidden'); });
+  g('registerState').classList.remove('hidden');
+  setTimeout(()=>g('registerName')?.focus(), 100);
+}
+
+function updateChip(){
+  const chip = g('userChipName');
+  if(chip) chip.textContent = STATE.userName || '?';
+}
+
+// Détecter fin d'événement
+function checkEventEnd(newStatus){
+  if((newStatus === 'finished' || newStatus === 'cancelled') && STATE.event){
+    localStorage.removeItem('lastEventId');
+    STATE.event = null;
+    STATE.eventId = null;
+    ['loadingState','welcomeState','formState','registerState'].forEach(id=>{ const el=g(id); if(el) el.classList.add('hidden'); });
+    g('queueSection').classList.add('hidden');
+    const msg = newStatus === 'cancelled' ? "L'événement a été annulé." : `Merci d'avoir été là, ${STATE.userName || ''} ! À bientôt 🎵`;
+    g('endMsg').textContent = msg;
+    g('endState').classList.remove('hidden');
+    if(document.getElementById('installBanner')) document.getElementById('installBanner').classList.add('hidden');
+  }
+}
+
+
 async function init(){
   STATE.userId = localStorage.getItem('uid') || ('u_'+Date.now()+'_'+Math.random().toString(36).slice(2,9));
   localStorage.setItem('uid', STATE.userId);
-  const savedName = localStorage.getItem('userName');
-  if(savedName) setTimeout(()=>{ const n=g('userName'); if(n) n.value=savedName; }, 200);
+
+  // Vérifier si l'utilisateur a un profil
+  const profile = getProfile();
+  if(profile){
+    STATE.userName = profile.name;
+  } else {
+    // Première visite → inscription
+    showRegister();
+    return;
+  }
+
   const urlEventId = new URLSearchParams(window.location.search).get('event');
   if(urlEventId){
     STATE.eventId = urlEventId;
@@ -285,6 +380,7 @@ async function init(){
     else showWelcome();
   }
 }
+
 
 async function loadEvent(){
   ['welcomeState','errorState','formState'].forEach(id=>{ const el=g(id); if(el) el.classList.add('hidden'); });
@@ -299,8 +395,10 @@ async function loadEvent(){
     const ev = ALL_EVENTS.find(e=>e.id===STATE.eventId);
     if(!ev){ localStorage.removeItem('lastEventId'); showWelcome('Événement introuvable — entre un nouveau code.'); return; }
     STATE.event = ev;
+    STATE.eventStatus = ev.status;
     localStorage.setItem('lastEventId', ev.id);
     applyBranding(ev);
+    updateChip();
     showForm(ev);
     renderQueue();
     setInterval(syncRequests, SYNC_INTERVAL);
@@ -311,7 +409,7 @@ async function loadEvent(){
 }
 
 function showWelcome(errMsg){
-  ['loadingState','errorState','formState'].forEach(id=>{ const el=g(id); if(el) el.classList.add('hidden'); });
+  ['loadingState','errorState','formState','registerState','endState'].forEach(id=>{ const el=g(id); if(el) el.classList.add('hidden'); });
   g('welcomeState').classList.remove('hidden');
   setupSearch();
   const lastId = localStorage.getItem('lastEventId');
@@ -376,8 +474,18 @@ function showForm(ev){
 // ── Sync ──────────────────────────────────────────────────────────────────
 async function syncRequests(){
   try{
-    const res = await fetch(API+'/requests').then(r=>r.json());
-    if(res.success){ STATE.requests = res.data; renderQueue(); }
+    const [evRes, rqRes] = await Promise.all([
+      fetch(API+'/events').then(r=>r.json()),
+      fetch(API+'/requests').then(r=>r.json())
+    ]);
+    if(rqRes.success){ STATE.requests = rqRes.data; renderQueue(); }
+    if(evRes.success && STATE.eventId){
+      const ev = evRes.data.find(e=>e.id===STATE.eventId);
+      if(ev && ev.status !== STATE.eventStatus){
+        STATE.eventStatus = ev.status;
+        checkEventEnd(ev.status);
+      }
+    }
   }catch(e){}
 }
 
@@ -454,7 +562,7 @@ function pickSong(song){
 g('requestForm').addEventListener('submit', async e=>{
   e.preventDefault();
   const songVal = g('songSearch').value.trim();
-  const userName = g('userName').value.trim();
+  const userName = STATE.userName || g('userName').value.trim();
   if(!songVal){ toast('Sélectionnez une chanson','error'); return; }
   if(!userName){ toast('Entrez votre prénom','error'); return; }
   const now = Date.now();
