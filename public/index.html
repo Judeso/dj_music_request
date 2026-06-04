@@ -127,6 +127,27 @@
     .sidebar-section{font-size:10px;font-weight:600;text-transform:uppercase;letter-spacing:.8px;padding:0 8px;margin:18px 0 6px;color:rgba(255,255,255,.25)}
     .sidebar-section:first-child{margin-top:0}
     .sidebar-link{display:flex;align-items:center;gap:8px;padding:8px 10px;border-radius:8px;font-size:13px;font-weight:500;color:var(--sidebar-muted);cursor:pointer;transition:all .15s;margin-bottom:2px;border:none;background:none;width:100%}
+    /* Analytics */
+    .an-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:12px;margin-bottom:20px}
+    .an-card{background:var(--surface);border:1px solid var(--border);border-radius:var(--r);padding:14px;text-align:center}
+    .an-val{font-size:26px;font-weight:700}
+    .an-lbl{font-size:11px;color:var(--muted);margin-top:3px;font-weight:500}
+    .bar-chart{display:flex;flex-direction:column;gap:6px}
+    .bar-row{display:flex;align-items:center;gap:8px;font-size:12px}
+    .bar-label{width:160px;flex-shrink:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;color:var(--text)}
+    .bar-track{flex:1;background:var(--border);border-radius:20px;height:10px;overflow:hidden}
+    .bar-fill{height:100%;border-radius:20px;background:var(--primary);transition:width .4s}
+    .bar-count{width:28px;text-align:right;color:var(--muted);flex-shrink:0}
+    .hour-chart{display:flex;align-items:flex-end;gap:3px;height:80px;margin-top:8px}
+    .hour-bar{flex:1;background:var(--primary-lt);border-radius:3px 3px 0 0;transition:height .3s;min-height:3px;cursor:default;position:relative}
+    .hour-bar:hover{background:var(--primary)}
+    .hour-bar:hover::after{content:attr(data-tip);position:absolute;bottom:100%;left:50%;transform:translateX(-50%);background:#1a1d27;color:#fff;padding:3px 7px;border-radius:4px;font-size:10px;white-space:nowrap;pointer-events:none}
+    .hour-labels{display:flex;justify-content:space-between;font-size:10px;color:var(--muted);margin-top:2px}
+    /* Branding color swatches */
+    .color-swatches{display:flex;gap:8px;flex-wrap:wrap;margin-top:6px}
+    .color-swatch{width:28px;height:28px;border-radius:6px;cursor:pointer;border:2px solid transparent;transition:transform .15s}
+    .color-swatch:hover{transform:scale(1.15)}
+    .color-swatch.active{border-color:var(--text);transform:scale(1.1)}
     .sidebar-link:hover{background:rgba(255,255,255,.07);color:#fff}
     .sidebar-link.active{background:rgba(79,70,229,.35);color:#fff}
     .sidebar-link .ico{font-size:15px;width:19px;text-align:center}
@@ -282,6 +303,7 @@
       <div class="sidebar-section">Navigation</div>
       <button class="sidebar-link active" onclick="showDJTab('events')"><span class="ico">🎉</span>Événements</button>
       <button class="sidebar-link" onclick="showDJTab('requests')"><span class="ico">🎵</span>Demandes</button>
+      <button class="sidebar-link" onclick="showDJTab('analytics')"><span class="ico">📊</span>Analytics</button>
     </nav>
     <div class="sidebar-footer">
       <div class="sidebar-user">
@@ -329,6 +351,18 @@
         </div>
       </div>
       <div class="content" id="allRequestsContainer"></div>
+    <div id="tabAnalytics" class="hidden">
+      <div class="topbar">
+        <div class="topbar-title">Analytics</div>
+        <div class="topbar-actions">
+          <select id="analyticsEventFilter" class="form-input form-select" style="font-size:13px;padding:6px 10px" onchange="renderAnalytics()">
+            <option value="">— Sélectionner un événement —</option>
+          </select>
+        </div>
+      </div>
+      <div class="content" id="analyticsContent">
+        <div class="empty"><div class="empty-icon">📊</div><h3>Sélectionnez un événement</h3><p>Choisissez un événement pour voir ses statistiques.</p></div>
+      </div>
     </div>
   </div>
 </div>
@@ -434,6 +468,22 @@
         <div class="form-group"><label class="form-label">Lieu *</label><input id="eventLocation" type="text" class="form-input" placeholder="Ex : Château de Versailles" required></div>
         <div class="form-group"><label class="form-label">Invités attendus *</label><input id="expectedGuests" type="number" class="form-input" placeholder="150" min="1" required></div>
         <div class="form-group"><label class="form-label" style="font-weight:400;color:var(--muted)">Description (optionnel)</label><textarea id="eventDescription" class="form-input form-textarea" rows="2" placeholder="Informations supplémentaires…"></textarea></div>
+        <div style="border-top:1px solid var(--border);margin:12px 0 14px;padding-top:14px">
+          <div style="font-size:12px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.5px;margin-bottom:12px">🎨 Branding participant</div>
+          <div class="form-group">
+            <label class="form-label">Nom du DJ</label>
+            <input id="eventDjName" type="text" class="form-input" placeholder="Ex : DJ Sono Delorme">
+          </div>
+          <div class="form-group">
+            <label class="form-label">Message d'accueil</label>
+            <input id="eventWelcome" type="text" class="form-input" placeholder="Ex : Bienvenue au mariage de Sophie & Paul 🎉">
+          </div>
+          <div class="form-group">
+            <label class="form-label">Couleur principale</label>
+            <div class="color-swatches" id="colorSwatches"></div>
+            <input type="hidden" id="eventColor" value="#4f46e5">
+          </div>
+        </div>
         <div style="display:flex;gap:8px;justify-content:flex-end;margin-top:4px">
           <button type="button" class="btn btn-ghost" onclick="closeEventModal()">Annuler</button>
           <button type="submit" class="btn btn-primary" id="saveEventBtn">
@@ -523,6 +573,8 @@ const DataSyncManager={
 function renderCurrentView(){
   if(STATE.currentPage==='dj')renderDJView();
   if(STATE.currentPage==='user'){updateEventsList();updateQueueCard();}
+  if(STATE.currentDJTab==='analytics')renderAnalytics();
+  populateAnalyticsFilter();
 }
 
 // ── Pages ─────────────────────────────────────────────────────────────────
@@ -609,7 +661,8 @@ function showDJTab(tab){
   STATE.currentDJTab=tab;
   g('tabEvents').classList.toggle('hidden',tab!=='events');
   g('tabRequests').classList.toggle('hidden',tab!=='requests');
-  document.querySelectorAll('.sidebar-link').forEach((l,i)=>l.classList.toggle('active',(tab==='events'&&i===0)||(tab==='requests'&&i===1)));
+  g('tabAnalytics').classList.toggle('hidden',tab!=='analytics');
+  document.querySelectorAll('.sidebar-link').forEach((l,i)=>l.classList.toggle('active',(tab==='events'&&i===0)||(tab==='requests'&&i===1)||(tab==='analytics'&&i===2)));
   renderDJView();
 }
 function renderDJView(){
@@ -707,11 +760,15 @@ function openEventModal(eid=null){
     g('eventDate').value=ev.date?new Date(ev.date).toISOString().slice(0,16):'';
     g('eventLocation').value=ev.location||'';g('expectedGuests').value=ev.expectedGuests||'';
     g('eventDescription').value=ev.description||'';g('eventStatus').value=ev.status||'preparation';
+    g('eventDjName').value=ev.djName||'';
+    g('eventWelcome').value=ev.welcomeMessage||'';
+    g('eventColor').value=ev.primaryColor||'#4f46e5';
   }else{
     g('eventModalTitle').textContent='Nouvel événement';g('saveEventText').textContent="Créer l'événement";
     const d=new Date();d.setDate(d.getDate()+1);d.setHours(20,0,0,0);
     g('eventDate').value=d.toISOString().slice(0,16);
   }
+  initColorSwatches(g('eventColor').value);
   g('eventModalBackdrop').classList.add('open');
 }
 function closeEventModal(e){if(e&&e.target!==g('eventModalBackdrop'))return;g('eventModalBackdrop').classList.remove('open')}
@@ -720,7 +777,7 @@ g('eventForm').addEventListener('submit',async e=>{
   e.preventDefault();
   const form=g('eventForm');const eid=form.dataset.eid;
   const btn=g('saveEventBtn'),txt=g('saveEventText'),spin=g('saveEventSpin');
-  const data={name:sanitize(g('eventName').value),type:g('eventType').value,date:g('eventDate').value,location:sanitize(g('eventLocation').value),expectedGuests:parseInt(g('expectedGuests').value)||0,description:sanitize(g('eventDescription').value),status:g('eventStatus').value,updatedAt:new Date().toISOString()};
+  const data={name:sanitize(g('eventName').value),type:g('eventType').value,date:g('eventDate').value,location:sanitize(g('eventLocation').value),expectedGuests:parseInt(g('expectedGuests').value)||0,description:sanitize(g('eventDescription').value),status:g('eventStatus').value,djName:sanitize(g('eventDjName').value),welcomeMessage:sanitize(g('eventWelcome').value),primaryColor:g('eventColor').value||'#4f46e5',updatedAt:new Date().toISOString()};
   if(!data.name||!data.type||!data.date||!data.location||!data.expectedGuests){notify('Remplissez tous les champs obligatoires','error');return;}
   btn.disabled=true;txt.classList.add('hidden');spin.classList.remove('hidden');
   try{
@@ -901,9 +958,23 @@ function updateEventsList(){
   }).join('');
 }
 
+function applyEventBranding(ev){
+  if(!ev)return;
+  const color=ev.primaryColor||'#4f46e5';
+  document.documentElement.style.setProperty('--primary',color);
+  document.documentElement.style.setProperty('--primary-lt',color+'22');
+  const hdr=document.querySelector('.user-header');
+  if(hdr){
+    hdr.querySelector('h1').textContent=ev.welcomeMessage||'Proposez une musique 🎵';
+    hdr.querySelector('p').textContent=ev.djName?`Soirée animée par ${ev.djName}`:'Proposez vos titres préférés au DJ en quelques secondes';
+    const brand=hdr.querySelector('.brand');
+    if(brand)brand.innerHTML=`<div class="brand-dot" style="background:${color}"></div>${ev.djName||'DJ Event Manager'}`;
+  }
+}
 function selectEvent(eventId){
   const ev=STATE.events.find(e=>e.id===eventId);if(!ev)return;
   STATE.selectedEventId=eventId;
+  applyEventBranding(ev);
   updateEventsList();
   g('selectedEventInfo').textContent=`🎉 ${ev.name}`;
   g('formDivider').style.display='block';
@@ -1094,6 +1165,84 @@ function updateQueueCard(){
   card.classList.remove('hidden');
 }
 function esc(s){return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');}
+
+// ── Color swatches ───────────────────────────────────────────────────────────
+const BRAND_COLORS=['#4f46e5','#ec4899','#f59e0b','#10b981','#ef4444','#8b5cf6','#0ea5e9','#f97316','#06b6d4','#1a1d27'];
+function initColorSwatches(current){
+  const wrap=g('colorSwatches');if(!wrap)return;
+  wrap.innerHTML=BRAND_COLORS.map(c=>`<div class="color-swatch${c===current?' active':''}" style="background:${c}" title="${c}" onclick="pickColor('${c}')"></div>`).join('');
+}
+function pickColor(c){
+  g('eventColor').value=c;
+  document.querySelectorAll('.color-swatch').forEach(s=>s.classList.toggle('active',s.style.background===c||s.title===c));
+}
+
+// ── Analytics ─────────────────────────────────────────────────────────────────
+function populateAnalyticsFilter(){
+  const sel=g('analyticsEventFilter');if(!sel)return;
+  const v=sel.value;
+  sel.innerHTML='<option value="">— Sélectionner un événement —</option>'+
+    [...STATE.events].sort((a,b)=>new Date(b.createdAt)-new Date(a.createdAt))
+      .map(ev=>`<option value="${ev.id}"${v===ev.id?' selected':''}>${esc(ev.name)}</option>`).join('');
+}
+function renderAnalytics(){
+  populateAnalyticsFilter();
+  const evId=g('analyticsEventFilter').value;
+  const c=g('analyticsContent');
+  if(!evId){c.innerHTML='<div class="empty"><div class="empty-icon">📊</div><h3>Sélectionnez un événement</h3></div>';return;}
+  const ev=STATE.events.find(e=>e.id===evId);
+  if(!ev){c.innerHTML='<div class="empty"><p>Événement introuvable</p></div>';return;}
+  const reqs=STATE.requests.filter(r=>r.eventId===evId);
+  const played=reqs.filter(r=>r.status==='played');
+  const pending=reqs.filter(r=>r.status==='pending');
+  const rate=reqs.length?Math.round(played.length/reqs.length*100):0;
+  const uniq=new Set(reqs.map(r=>r.userId)).size;
+
+  // Top chansons
+  const songMap={};
+  reqs.forEach(r=>{const k=`${r.songTitle}|||${r.artist}`;songMap[k]=(songMap[k]||0)+1;});
+  const topSongs=Object.entries(songMap).sort((a,b)=>b[1]-a[1]).slice(0,10);
+  const maxSong=topSongs[0]?.[1]||1;
+
+  // Activité par heure
+  const hours=Array(24).fill(0);
+  reqs.forEach(r=>{if(r.timestamp){const h=new Date(r.timestamp).getHours();hours[h]++;}});
+  const maxH=Math.max(...hours,1);
+
+  c.innerHTML=`
+    <div class="an-grid">
+      <div class="an-card"><div class="an-val">${reqs.length}</div><div class="an-lbl">Total demandes</div></div>
+      <div class="an-card"><div class="an-val" style="color:var(--success)">${played.length}</div><div class="an-lbl">Jouées</div></div>
+      <div class="an-card"><div class="an-val" style="color:var(--warning)">${pending.length}</div><div class="an-lbl">En attente</div></div>
+      <div class="an-card"><div class="an-val" style="color:var(--primary)">${rate}%</div><div class="an-lbl">Taux de diffusion</div></div>
+      <div class="an-card"><div class="an-val">${uniq}</div><div class="an-lbl">Participants</div></div>
+    </div>
+
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:16px">
+      <div style="background:var(--surface);border:1px solid var(--border);border-radius:var(--r);padding:16px">
+        <div style="font-size:13px;font-weight:700;margin-bottom:12px">🏆 Top chansons demandées</div>
+        ${topSongs.length?`<div class="bar-chart">${topSongs.map(([k,n])=>{const[t,a]=k.split('|||');return`<div class="bar-row"><div class="bar-label" title="${esc(t)} — ${esc(a)}">${esc(t)}</div><div class="bar-track"><div class="bar-fill" style="width:${Math.round(n/maxSong*100)}%"></div></div><div class="bar-count">${n}</div></div>`;}).join('')}</div>`:'<p style="color:var(--muted);font-size:13px">Aucune demande</p>'}
+      </div>
+      <div style="background:var(--surface);border:1px solid var(--border);border-radius:var(--r);padding:16px">
+        <div style="font-size:13px;font-weight:700;margin-bottom:4px">🕐 Activité par heure</div>
+        <div class="hour-chart">${hours.map((n,h)=>`<div class="hour-bar" style="height:${Math.round(n/maxH*100)}%" data-tip="${h}h : ${n} demande${n!==1?'s':''}"></div>`).join('')}</div>
+        <div class="hour-labels"><span>0h</span><span>6h</span><span>12h</span><span>18h</span><span>23h</span></div>
+      </div>
+    </div>
+
+    ${(()=>{
+      const pMap={};
+      reqs.forEach(r=>{pMap[r.userName]=(pMap[r.userName]||0)+1;});
+      const top=Object.entries(pMap).sort((a,b)=>b[1]-a[1]).slice(0,5);
+      if(!top.length)return'';
+      return`<div style="background:var(--surface);border:1px solid var(--border);border-radius:var(--r);overflow:hidden">
+        <div style="padding:12px 16px;font-size:13px;font-weight:700;border-bottom:1px solid var(--border)">🎤 Participants les plus actifs</div>
+        <table class="table"><thead><tr><th>#</th><th>Prénom</th><th>Demandes</th></tr></thead>
+        <tbody>${top.map(([name,n],i)=>`<tr><td><strong>#${i+1}</strong></td><td>${esc(name)}</td><td><span style="background:var(--primary-lt);color:var(--primary);padding:2px 8px;border-radius:20px;font-size:12px;font-weight:600">${n}</span></td></tr>`).join('')}</tbody>
+        </table></div>`;
+    })()}
+  `;
+}
 
 // ── Init ───────────────────────────────────────────────────────────────────
 async function init(){

@@ -14,7 +14,10 @@ async function ensureTable() {
       status          TEXT DEFAULT 'preparation',
       short_code      TEXT,
       created_at      TEXT,
-      updated_at      TEXT
+      updated_at      TEXT,
+      primary_color   TEXT DEFAULT '#4f46e5',
+      welcome_message TEXT,
+      dj_name         TEXT
     )
   `;
 }
@@ -40,7 +43,10 @@ function toRow(row) {
     status:         row.status,
     shortCode:      row.short_code,
     createdAt:      row.created_at,
-    updatedAt:      row.updated_at
+    updatedAt:      row.updated_at,
+    primaryColor:   row.primary_color || '#4f46e5',
+    welcomeMessage: row.welcome_message,
+    djName:         row.dj_name
   };
 }
 
@@ -65,6 +71,10 @@ export default async function handler(req, res) {
 
   try {
     await initTable();
+    // Migration branding
+    await sql`ALTER TABLE events ADD COLUMN IF NOT EXISTS primary_color TEXT DEFAULT '#4f46e5'`;
+    await sql`ALTER TABLE events ADD COLUMN IF NOT EXISTS welcome_message TEXT`;
+    await sql`ALTER TABLE events ADD COLUMN IF NOT EXISTS dj_name TEXT`;
 
     const parts   = req.url.split('?')[0].split('/').filter(Boolean);
     const last    = parts[parts.length - 1];
@@ -81,12 +91,13 @@ export default async function handler(req, res) {
       const id   = crypto.randomUUID();
       const [row] = await sql`
         INSERT INTO events
-          (id, name, type, date, location, expected_guests, description, status, short_code, created_at, updated_at)
+          (id, name, type, date, location, expected_guests, description, status, short_code, created_at, updated_at, primary_color, welcome_message, dj_name)
         VALUES
           (${id}, ${body.name}, ${body.type ?? null}, ${body.date ?? null},
            ${body.location ?? null}, ${body.expectedGuests ?? null}, ${body.description ?? null},
            ${body.status ?? 'preparation'}, ${body.shortCode ?? null},
-           ${body.createdAt ?? now}, ${body.updatedAt ?? now})
+           ${body.createdAt ?? now}, ${body.updatedAt ?? now},
+           ${body.primaryColor ?? '#4f46e5'}, ${body.welcomeMessage ?? null}, ${body.djName ?? null})
         RETURNING *
       `;
       return res.status(201).json({ success: true, data: toRow(row) });
@@ -105,6 +116,9 @@ export default async function handler(req, res) {
           description     = COALESCE(${body.description     ?? null}, description),
           status          = COALESCE(${body.status          ?? null}, status),
           short_code      = COALESCE(${body.shortCode       ?? null}, short_code),
+          primary_color   = COALESCE(${body.primaryColor    ?? null}, primary_color),
+          welcome_message = COALESCE(${body.welcomeMessage  ?? null}, welcome_message),
+          dj_name         = COALESCE(${body.djName          ?? null}, dj_name),
           updated_at      = ${now}
         WHERE id = ${eventId}
         RETURNING *
